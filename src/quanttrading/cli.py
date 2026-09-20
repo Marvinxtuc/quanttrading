@@ -10,7 +10,7 @@ from quanttrading.backtest.runner import run_backtest, run_bars
 from quanttrading.config import load_settings
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
 from quanttrading.execution.paper import PaperBroker
-from quanttrading.strategy.sma import SMACrossover
+from quanttrading.strategy import default_strategy
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Local crypto paper-trading MVP.")
 
@@ -63,7 +63,7 @@ def paper(
     fast: int = typer.Option(10, min=2),
     slow: int = typer.Option(30, min=3),
 ) -> None:
-    """Replay bars through SMA stub + paper broker + risk gates."""
+    """Replay bars through the default SMA crossover + paper broker + risk gates."""
     settings = load_settings()
     csv_path = data or bundled_sample_path()
     if not csv_path.exists():
@@ -71,9 +71,9 @@ def paper(
     bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
     store_path = state or settings.state_path
     broker = PaperBroker(settings, store_path=store_path)
-    strategy = SMACrossover(fast=fast, slow=slow)
+    strategy = default_strategy(fast=fast, slow=slow, max_slippage_bps=settings.max_slippage_bps)
     result = run_bars(bars, strategy, broker)
-    typer.echo(f"paper loop: {len(bars)} bars  state={store_path}")
+    typer.echo(f"paper loop: {len(bars)} bars  strategy={strategy.strategy_id}  state={store_path}")
     _print_metrics(result.metrics)
 
 
@@ -90,8 +90,9 @@ def backtest(
     if not csv_path.exists():
         raise typer.BadParameter(f"no data at {csv_path}")
     bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
-    result = run_backtest(bars, SMACrossover(fast=fast, slow=slow), settings)
-    typer.echo(f"backtest: {len(bars)} bars  strategy=sma_cross_v1")
+    strategy = default_strategy(fast=fast, slow=slow, max_slippage_bps=settings.max_slippage_bps)
+    result = run_backtest(bars, strategy, settings)
+    typer.echo(f"backtest: {len(bars)} bars  strategy={strategy.strategy_id}")
     _print_metrics(result.metrics)
 
 

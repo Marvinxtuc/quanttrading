@@ -55,7 +55,7 @@ A deterministic synthetic sample is also bundled at `src/quanttrading/samples/bt
 
 ## Run the paper loop
 
-One command replays BTC/USDT bars through the SMA stub, paper broker, and risk gates:
+One command replays BTC/USDT bars through the default SMA crossover, paper broker, and risk gates:
 
 ```bash
 quanttrading paper
@@ -71,13 +71,17 @@ quanttrading backtest --data data/btcusdt_1h.csv
 
 Both print metrics: trade days, Sharpe (crypto, 365), max drawdown, win rate, profit factor, halt state.
 
+### Default strategy (`sma_cross_v1`)
+
+Long-only fast/slow SMA crossover (defaults 10 / 30) on whatever symbol the feed provides. Market orders only. An open is sized at `equity * PER_TRADE_PCT` in quote USDT; a close flattens the full base position. `client_order_id` is deterministic from strategy id, symbol, bar timestamp, intent, and side so paper replays are stable. Risk kill-switches stay in the execution layer.
+
 ## Tests
 
 ```bash
 python -m pytest
 ```
 
-Coverage: signal contract validation, risk halt / reject, paper fill math.
+Coverage: signal contract validation, default SMA strategy → Signal → submit, risk halt / reject, paper fill math.
 
 ## Layout
 
@@ -85,7 +89,7 @@ Coverage: signal contract validation, risk halt / reject, paper fill math.
 src/quanttrading/
   signals.py           # Signal contract v0.1 (pydantic, JSON-serializable)
   data/ohlcv.py        # ccxt public fetch, CSV, synthetic sample
-  strategy/sma.py      # SMA crossover stub (long-only)
+  strategy/sma.py      # default strategy: long-only SMA crossover
   execution/base.py    # shared ExecutionBackend protocol
   execution/paper.py   # sim fills, positions, equity, SQLite
   execution/risk.py    # per-trade / daily / total-DD kill-switch

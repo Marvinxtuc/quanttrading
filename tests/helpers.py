@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from quanttrading.market import Bar
 from quanttrading.signals import RiskUtilization, Signal
+from quanttrading.strategy.base import StrategyContext
 
 UTC = timezone.utc
 
@@ -49,3 +50,40 @@ def make_signal(**overrides: object) -> Signal:
     )
     payload.update(overrides)
     return Signal.model_validate(payload)
+
+
+def make_context(**overrides: object) -> StrategyContext:
+    payload: dict = dict(
+        equity=2000.0,
+        position_qty=0.0,
+        per_trade_pct=0.01,
+        per_trade_util=0.0,
+        daily_dd_util=0.0,
+        total_dd_util=0.0,
+        halted=False,
+    )
+    payload.update(overrides)
+    return StrategyContext(**payload)
+
+
+def bars_from_closes(
+    closes: list[float],
+    *,
+    symbol: str = "BTC/USDT",
+    start: datetime | None = None,
+) -> list[Bar]:
+    ts = start or datetime(2024, 1, 1, tzinfo=UTC)
+    bars: list[Bar] = []
+    for close in closes:
+        bars.append(
+            make_bar(
+                close=close,
+                open=close,
+                high=close * 1.01,
+                low=close * 0.99,
+                ts=ts,
+                symbol=symbol,
+            )
+        )
+        ts = ts + timedelta(hours=1)
+    return bars
