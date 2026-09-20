@@ -7,7 +7,7 @@ secrets/
 *.key
 
 # Fetched / generated runtime data
-data/
+/data/
 
 # Paper / backtest runtime state
 state/
