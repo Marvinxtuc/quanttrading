@@ -24,8 +24,16 @@ def fetch_ohlcv(
     exchange_cls = getattr(ccxt, exchange_id, None)
     if exchange_cls is None:
         raise ValueError(f"unknown ccxt exchange id: {exchange_id}")
-    exchange = exchange_cls({"enableRateLimit": True})
-    raw = exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since_ms, limit=limit)
+    exchange = exchange_cls({"enableRateLimit": True, "timeout": 20_000})
+    try:
+        raw = exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since_ms, limit=limit)
+    except Exception as exc:
+        raise RuntimeError(
+            f"public OHLCV fetch failed for {exchange_id} {symbol}: {exc}. "
+            "Binance is geo-blocked in some regions (HTTP 451). "
+            "Retry with --exchange kraken (or okx, binanceus) "
+            "or generate offline bars: quanttrading sample-data"
+        ) from exc
     bars: list[Bar] = []
     for ts_ms, o, h, l, c, v in raw:
         bars.append(

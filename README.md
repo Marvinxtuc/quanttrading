@@ -32,6 +32,8 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+Commands are `quanttrading` (console script) or `python -m quanttrading`.
+
 Copy `.env.example` to `.env` if you want to override defaults. Do not put secrets in the repo; `.gitignore` excludes `.env`, `state/`, and SQLite files.
 
 ## Fetch sample data
@@ -42,11 +44,14 @@ Public OHLCV only (no keys):
 quanttrading fetch --symbol BTC/USDT --timeframe 1h --out data/btcusdt_1h.csv
 ```
 
-Offline synthetic bars (also bundled at `src/quanttrading/samples/btcusdt_1h.csv`):
+Default venue is Binance. If that host returns HTTP 451 (geo restriction), use another public ccxt exchange or the offline generator:
 
 ```bash
+quanttrading fetch --exchange kraken --symbol BTC/USDT --timeframe 1h --out data/btcusdt_1h.csv
 quanttrading sample-data --out data/btcusdt_1h.csv
 ```
+
+A deterministic synthetic sample is also bundled at `src/quanttrading/samples/btcusdt_1h.csv`, so `quanttrading paper` runs without network.
 
 ## Run the paper loop
 
@@ -69,7 +74,7 @@ Both print metrics: trade days, Sharpe (crypto, 365), max drawdown, win rate, pr
 ## Tests
 
 ```bash
-pytest
+python -m pytest
 ```
 
 Coverage: signal contract validation, risk halt / reject, paper fill math.

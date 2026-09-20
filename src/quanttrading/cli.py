@@ -29,12 +29,16 @@ def fetch(
 ) -> None:
     """Fetch public OHLCV via ccxt (no API keys)."""
     settings = load_settings()
-    bars = fetch_ohlcv(
-        exchange_id=exchange or settings.exchange_id,
-        symbol=symbol or settings.default_symbol,
-        timeframe=timeframe or settings.default_timeframe,
-        limit=limit,
-    )
+    try:
+        bars = fetch_ohlcv(
+            exchange_id=exchange or settings.exchange_id,
+            symbol=symbol or settings.default_symbol,
+            timeframe=timeframe or settings.default_timeframe,
+            limit=limit,
+        )
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
     save_csv(bars, out)
     typer.echo(f"wrote {len(bars)} bars → {out}")
 
