@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quanttrading"
+version = "0.1.0"
+description = "Local crypto paper-trading MVP: market data → signals → paper/backtest execution → hard risk kill-switch."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Marvin" }]
+dependencies = [
+  "ccxt>=4.3.0",
+  "pydantic>=2.6.0",
+  "pydantic-settings>=2.2.0",
+  "python-dotenv>=1.0.0",
+  "typer>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+quanttrading = "quanttrading.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+quanttrading = ["samples/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

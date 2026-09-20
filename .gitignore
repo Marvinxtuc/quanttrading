@@ -1,0 +1,35 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Fetched / generated runtime data
+data/
+
+# Paper / backtest runtime state
+state/
+*.sqlite
+*.db
+*.db-journal
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
