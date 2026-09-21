@@ -12,8 +12,8 @@ _CSV_FIELDS = ("timestamp", "symbol", "open", "high", "low", "close", "volume")
 
 def fetch_ohlcv(
     *,
-    exchange_id: str = "binance",
-    symbol: str = "BTC/USDT",
+    exchange_id: str = "kraken",
+    symbol: str = "BTC/USD",
     timeframe: str = "1h",
     limit: int = 500,
     since_ms: int | None = None,
@@ -30,8 +30,9 @@ def fetch_ohlcv(
     except Exception as exc:
         raise RuntimeError(
             f"public OHLCV fetch failed for {exchange_id} {symbol}: {exc}. "
-            "Binance is geo-blocked in some regions (HTTP 451). "
-            "Retry with --exchange kraken (or okx, binanceus) "
+            "Default venue is Kraken public OHLCV (BTC/USD). "
+            "Retry with --exchange kraken --symbol BTC/USD "
+            "(or another public ccxt id) "
             "or generate offline bars: quanttrading sample-data"
         ) from exc
     bars: list[Bar] = []
@@ -69,7 +70,7 @@ def save_csv(bars: list[Bar], path: Path) -> None:
             )
 
 
-def load_csv(path: Path, default_symbol: str = "BTC/USDT") -> list[Bar]:
+def load_csv(path: Path, default_symbol: str = "BTC/USD") -> list[Bar]:
     bars: list[Bar] = []
     with path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -93,7 +94,7 @@ def load_csv(path: Path, default_symbol: str = "BTC/USDT") -> list[Bar]:
 
 def generate_sample_bars(
     *,
-    symbol: str = "BTC/USDT",
+    symbol: str = "BTC/USD",
     n: int = 480,
     start: datetime | None = None,
     seed: int = 42,

@@ -10,7 +10,7 @@ from quanttrading.backtest.runner import run_backtest, run_bars
 from quanttrading.config import load_settings
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
 from quanttrading.execution.paper import PaperBroker
-from quanttrading.strategy import default_strategy
+from quanttrading.strategy import DEFAULT_MIN_VOL, DEFAULT_VOL_WINDOW, default_strategy
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Local crypto paper-trading MVP.")
 
@@ -21,11 +21,11 @@ def _print_metrics(metrics: dict) -> None:
 
 @app.command()
 def fetch(
-    symbol: Optional[str] = typer.Option(None, help="ccxt symbol, e.g. BTC/USDT or BTC/USDT:USDT"),
+    symbol: Optional[str] = typer.Option(None, help="ccxt symbol, e.g. BTC/USD"),
     timeframe: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None, help="ccxt exchange id (public OHLCV only)"),
     limit: int = typer.Option(500, min=1, max=1000),
-    out: Path = typer.Option(Path("data/btcusdt_1h.csv")),
+    out: Path = typer.Option(Path("data/btcusd_1h.csv")),
 ) -> None:
     """Fetch public OHLCV via ccxt (no API keys)."""
     settings = load_settings()
@@ -45,11 +45,11 @@ def fetch(
 
 @app.command("sample-data")
 def sample_data(
-    out: Path = typer.Option(Path("data/btcusdt_1h.csv")),
+    out: Path = typer.Option(Path("data/btcusd_1h.csv")),
     n: int = typer.Option(480, min=50),
-    symbol: str = typer.Option("BTC/USDT"),
+    symbol: str = typer.Option("BTC/USD"),
 ) -> None:
-    """Write bundled-style synthetic BTC/USDT hourly bars (offline, deterministic)."""
+    """Write bundled-style synthetic BTC/USD hourly bars (offline, deterministic)."""
     bars = generate_sample_bars(symbol=symbol, n=n)
     save_csv(bars, out)
     typer.echo(f"wrote {len(bars)} synthetic bars → {out}")
@@ -62,8 +62,10 @@ def paper(
     symbol: Optional[str] = typer.Option(None),
     fast: int = typer.Option(10, min=2),
     slow: int = typer.Option(30, min=3),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0),
 ) -> None:
-    """Replay bars through the default SMA crossover + paper broker + risk gates."""
+    """Replay bars through the default SMA crossover + vol filter + paper broker + risk gates."""
     settings = load_settings()
     csv_path = data or bundled_sample_path()
     if not csv_path.exists():
@@ -71,7 +73,13 @@ def paper(
     bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
     store_path = state or settings.state_path
     broker = PaperBroker(settings, store_path=store_path)
-    strategy = default_strategy(fast=fast, slow=slow, max_slippage_bps=settings.max_slippage_bps)
+    strategy = default_strategy(
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        max_slippage_bps=settings.max_slippage_bps,
+    )
     result = run_bars(bars, strategy, broker)
     typer.echo(f"paper loop: {len(bars)} bars  strategy={strategy.strategy_id}  state={store_path}")
     _print_metrics(result.metrics)
@@ -83,6 +91,8 @@ def backtest(
     symbol: Optional[str] = typer.Option(None),
     fast: int = typer.Option(10, min=2),
     slow: int = typer.Option(30, min=3),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0),
 ) -> None:
     """Historical bars + pluggable strategy, same signal → execution interface as paper."""
     settings = load_settings()
@@ -90,7 +100,13 @@ def backtest(
     if not csv_path.exists():
         raise typer.BadParameter(f"no data at {csv_path}")
     bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
-    strategy = default_strategy(fast=fast, slow=slow, max_slippage_bps=settings.max_slippage_bps)
+    strategy = default_strategy(
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        max_slippage_bps=settings.max_slippage_bps,
+    )
     result = run_backtest(bars, strategy, settings)
     typer.echo(f"backtest: {len(bars)} bars  strategy={strategy.strategy_id}")
     _print_metrics(result.metrics)

@@ -17,7 +17,7 @@ def make_bar(
     low: float | None = None,
     open: float | None = None,
     ts: datetime | None = None,
-    symbol: str = "BTC/USDT",
+    symbol: str = "BTC/USD",
 ) -> Bar:
     o = close if open is None else open
     return Bar(
@@ -35,7 +35,7 @@ def make_signal(**overrides: object) -> Signal:
     payload: dict = dict(
         strategy_id="test",
         ts=datetime(2024, 6, 1, 12, 0, tzinfo=UTC),
-        symbol="BTC/USDT",
+        symbol="BTC/USD",
         side="buy",
         intent="open",
         qty=20.0,
@@ -69,7 +69,7 @@ def make_context(**overrides: object) -> StrategyContext:
 def bars_from_closes(
     closes: list[float],
     *,
-    symbol: str = "BTC/USDT",
+    symbol: str = "BTC/USD",
     start: datetime | None = None,
 ) -> list[Bar]:
     ts = start or datetime(2024, 1, 1, tzinfo=UTC)

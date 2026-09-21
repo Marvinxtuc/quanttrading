@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     )
 
     paper_equity: float = Field(default=2000.0, gt=0)
-    exchange_id: str = "binance"
-    default_symbol: str = "BTC/USDT"
+    exchange_id: str = "kraken"
+    default_symbol: str = "BTC/USD"
     default_timeframe: str = "1h"
     per_trade_pct: float = Field(default=0.01, gt=0, le=1)
     daily_dd_pct: float = Field(default=0.03, gt=0, le=1)
