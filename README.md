@@ -55,21 +55,34 @@ A deterministic synthetic sample is also bundled at `src/quanttrading/samples/bt
 
 ## Run the paper loop
 
-One command replays BTC/USD bars through the default SMA crossover (with vol filter), paper broker, and risk gates:
+Default strategy is `sma_cross_v2`. `--strategy mean_reversion_v1` runs the short-window mean-reversion comparison on the same Kraken `BTC/USD` bars, paper broker, and risk gates (per-trade 1%, daily loss breaker 3%, max drawdown 20%).
 
 ```bash
+# sma_cross_v2 (default — omitting --strategy is the same)
 quanttrading paper
-# or with fetched/synthetic CSV + persisted SQLite state
-quanttrading paper --data data/btcusd_1h.csv --state state/paper.sqlite
+quanttrading paper --strategy sma_cross_v2 --data data/btcusd_1h.csv --state state/paper.sqlite
+
+# mean_reversion_v1
+quanttrading paper --strategy mean_reversion_v1
+quanttrading paper --strategy mean_reversion_v1 --data data/btcusd_1h.csv --state state/paper_mr.sqlite --lookback 20 --entry-z 1.5 --exit-z 0
 ```
 
 Same pipeline as a historical backtest (in-memory store):
 
 ```bash
 quanttrading backtest --data data/btcusd_1h.csv
+quanttrading backtest --strategy mean_reversion_v1 --data data/btcusd_1h.csv
 ```
 
 Both print metrics: trade days, Sharpe (crypto, 365), max drawdown, win rate, profit factor, halt state.
+
+### Comparing `sma_cross_v2` and `mean_reversion_v1`
+
+Compare the two on the **same bars** using **fills** (`n_fills`), **drawdown** (`max_dd`), and **invalid or filtered signals** — not short-window Sharpe. The printed `sharpe` is not a ranking metric here: mean reversion uses a 10–20 bar lookback, and Sharpe on that horizon is noise.
+
+- **Fills / drawdown:** `n_fills` and `max_dd` in the paper or backtest JSON. Use a separate `--state` file per strategy so the SQLite books do not mix.
+- **Filtered signals:** `sma_cross_v2` drops new opens when realized vol is missing or below `min_vol` (no Signal is emitted; closes are not filtered). `mean_reversion_v1` does not use that vol filter. It emits no open when flat and the close is not displaced (`z > -entry_z`).
+- **Invalid signals:** the execution layer still rejects opens that break the 1% / 3% / 20% caps. Those land in the state SQLite `fills` table with `status=rejected` and a reason (`per_trade_limit`, `daily_circuit_breaker`, `max_drawdown`). Flatten/close stays allowed.
 
 ### Default strategy (`sma_cross_v2`)
 
@@ -79,13 +92,27 @@ Long-only fast/slow SMA crossover (defaults 10 / 30) plus a **min-vol filter** o
 
 `client_order_id` is deterministic from strategy id, symbol, bar timestamp, intent, and side so paper replays are stable. Risk kill-switches stay in the execution layer.
 
+`--fast`, `--slow`, `--vol-window`, and `--min-vol` apply to `sma_cross_v2` only.
+
+### Comparison strategy (`mean_reversion_v1`)
+
+Long-only mean reversion on a short close window (default lookback **20**). Market orders only, same sizing path as `sma_cross_v2`: an open is `equity * PER_TRADE_PCT` in quote USD; a close flattens the full base position.
+
+**Rule:** z-score of the latest close versus the lookback SMA (population std). While flat, z `<= -entry_z` (default **1.5**) → market buy, intent=open. While long, z `>= exit_z` (default **0**, back at the mean) → market sell, intent=close. Prices above the mean do not open a short. No second open while already long.
+
+The SMA min-vol filter is not applied. That filter skips quiet *trend* opens; this strategy's entry is the displacement itself.
+
+`lookback`, `entry_z`, `exit_z`, `threshold` (`-entry_z`), `mean`, `std`, `z`, and `close` are stored on each Signal `meta` (strategy id `mean_reversion_v1`) so paper runs are auditable.
+
+`--lookback`, `--entry-z`, and `--exit-z` apply to `mean_reversion_v1` only.
+
 ## Tests
 
 ```bash
 python -m pytest
 ```
 
-Coverage: signal contract validation, default SMA+vol strategy → Signal → submit, risk halt / reject, paper fill math.
+Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math.
 
 ## Layout
 
@@ -94,6 +121,7 @@ src/quanttrading/
   signals.py           # Signal contract v0.1 (pydantic, JSON-serializable)
   data/ohlcv.py        # ccxt public fetch, CSV, synthetic sample
   strategy/sma.py      # default strategy: SMA crossover + min-vol filter (`sma_cross_v2`)
+  strategy/mean_reversion.py  # comparison: short-window mean reversion (`mean_reversion_v1`)
   execution/base.py    # shared ExecutionBackend protocol
   execution/paper.py   # sim fills, positions, equity, SQLite
   execution/risk.py    # per-trade / daily / total-DD kill-switch

@@ -7,16 +7,63 @@ from typing import Optional
 import typer
 
 from quanttrading.backtest.runner import run_backtest, run_bars
-from quanttrading.config import load_settings
+from quanttrading.config import Settings, load_settings
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
 from quanttrading.execution.paper import PaperBroker
-from quanttrading.strategy import DEFAULT_MIN_VOL, DEFAULT_VOL_WINDOW, default_strategy
+from quanttrading.market import Bar
+from quanttrading.strategy import (
+    DEFAULT_ENTRY_Z,
+    DEFAULT_EXIT_Z,
+    DEFAULT_LOOKBACK,
+    DEFAULT_MIN_VOL,
+    DEFAULT_STRATEGY_ID,
+    DEFAULT_VOL_WINDOW,
+    Strategy,
+    build_strategy,
+)
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="Local crypto paper-trading MVP.")
 
 
 def _print_metrics(metrics: dict) -> None:
     typer.echo(json.dumps(metrics, indent=2, default=str))
+
+
+def _load_bars(data: Path | None, symbol: str | None) -> tuple[list[Bar], Settings]:
+    settings = load_settings()
+    csv_path = data or bundled_sample_path()
+    if not csv_path.exists():
+        raise typer.BadParameter(f"no data at {csv_path}; run: quanttrading fetch  or  quanttrading sample-data")
+    bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
+    return bars, settings
+
+
+def _build_strategy(
+    settings: Settings,
+    strategy_id: str,
+    *,
+    fast: int,
+    slow: int,
+    vol_window: int,
+    min_vol: float,
+    lookback: int,
+    entry_z: float,
+    exit_z: float,
+) -> Strategy:
+    try:
+        return build_strategy(
+            strategy_id,
+            fast=fast,
+            slow=slow,
+            vol_window=vol_window,
+            min_vol=min_vol,
+            lookback=lookback,
+            entry_z=entry_z,
+            exit_z=exit_z,
+            max_slippage_bps=settings.max_slippage_bps,
+        )
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 @app.command()
@@ -60,28 +107,35 @@ def paper(
     data: Optional[Path] = typer.Option(None, help="OHLCV CSV. Defaults to bundled sample."),
     state: Optional[Path] = typer.Option(None, help="SQLite state path"),
     symbol: Optional[str] = typer.Option(None),
-    fast: int = typer.Option(10, min=2),
-    slow: int = typer.Option(30, min=3),
-    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2),
-    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0),
+    strategy: str = typer.Option(
+        DEFAULT_STRATEGY_ID,
+        help="sma_cross_v2 (default) or mean_reversion_v1",
+    ),
+    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
+    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
+    entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
+    exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
 ) -> None:
-    """Replay bars through the default SMA crossover + vol filter + paper broker + risk gates."""
-    settings = load_settings()
-    csv_path = data or bundled_sample_path()
-    if not csv_path.exists():
-        raise typer.BadParameter(f"no data at {csv_path}; run: quanttrading fetch  or  quanttrading sample-data")
-    bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
+    """Replay bars through a strategy, the paper broker, and execution risk gates."""
+    bars, settings = _load_bars(data, symbol)
     store_path = state or settings.state_path
     broker = PaperBroker(settings, store_path=store_path)
-    strategy = default_strategy(
+    chosen = _build_strategy(
+        settings,
+        strategy,
         fast=fast,
         slow=slow,
         vol_window=vol_window,
         min_vol=min_vol,
-        max_slippage_bps=settings.max_slippage_bps,
+        lookback=lookback,
+        entry_z=entry_z,
+        exit_z=exit_z,
     )
-    result = run_bars(bars, strategy, broker)
-    typer.echo(f"paper loop: {len(bars)} bars  strategy={strategy.strategy_id}  state={store_path}")
+    result = run_bars(bars, chosen, broker)
+    typer.echo(f"paper loop: {len(bars)} bars  strategy={chosen.strategy_id}  state={store_path}")
     _print_metrics(result.metrics)
 
 
@@ -89,26 +143,33 @@ def paper(
 def backtest(
     data: Optional[Path] = typer.Option(None),
     symbol: Optional[str] = typer.Option(None),
-    fast: int = typer.Option(10, min=2),
-    slow: int = typer.Option(30, min=3),
-    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2),
-    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0),
+    strategy: str = typer.Option(
+        DEFAULT_STRATEGY_ID,
+        help="sma_cross_v2 (default) or mean_reversion_v1",
+    ),
+    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
+    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
+    entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
+    exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
 ) -> None:
     """Historical bars + pluggable strategy, same signal → execution interface as paper."""
-    settings = load_settings()
-    csv_path = data or bundled_sample_path()
-    if not csv_path.exists():
-        raise typer.BadParameter(f"no data at {csv_path}")
-    bars = load_csv(csv_path, default_symbol=symbol or settings.default_symbol)
-    strategy = default_strategy(
+    bars, settings = _load_bars(data, symbol)
+    chosen = _build_strategy(
+        settings,
+        strategy,
         fast=fast,
         slow=slow,
         vol_window=vol_window,
         min_vol=min_vol,
-        max_slippage_bps=settings.max_slippage_bps,
+        lookback=lookback,
+        entry_z=entry_z,
+        exit_z=exit_z,
     )
-    result = run_backtest(bars, strategy, settings)
-    typer.echo(f"backtest: {len(bars)} bars  strategy={strategy.strategy_id}")
+    result = run_backtest(bars, chosen, settings)
+    typer.echo(f"backtest: {len(bars)} bars  strategy={chosen.strategy_id}")
     _print_metrics(result.metrics)
 
 
