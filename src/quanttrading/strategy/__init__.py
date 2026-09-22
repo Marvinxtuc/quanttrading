@@ -8,6 +8,13 @@ from quanttrading.strategy.mean_reversion import (
     close_zscore,
     mean_reversion_strategy,
 )
+from quanttrading.strategy.trend_breakout import (
+    DEFAULT_ROUND_TRIP_COST,
+    DEFAULT_STOP_ATR,
+    TREND_BREAKOUT_STRATEGY_ID,
+    TrendBreakout,
+    trend_breakout_strategy,
+)
 from quanttrading.strategy.sma import (
     DEFAULT_FAST,
     DEFAULT_MIN_VOL,
@@ -27,11 +34,13 @@ from quanttrading.strategy.sma import (
     sma_cross_5m_strategy,
 )
 
+# range_reversion_v2 is named in research brief v0 and is not implemented.
 KNOWN_STRATEGY_IDS = (
     DEFAULT_STRATEGY_ID,
     SMA_CROSS_15M_STRATEGY_ID,
     SMA_CROSS_5M_STRATEGY_ID,
     MEAN_REVERSION_STRATEGY_ID,
+    TREND_BREAKOUT_STRATEGY_ID,
 )
 
 _HF_STRATEGY_FACTORIES = {
@@ -51,8 +60,13 @@ def build_strategy(
     entry_z: float = DEFAULT_ENTRY_Z,
     exit_z: float = DEFAULT_EXIT_Z,
     max_slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+    stop_atr: float = DEFAULT_STOP_ATR,
+    round_trip_cost: float = DEFAULT_ROUND_TRIP_COST,
 ) -> Strategy:
     """Build a paper/backtest strategy by id. Default remains ``sma_cross_v2``.
+
+    ``stop_atr`` and ``round_trip_cost`` apply only to ``trend_breakout_v1``.
+    That id is paper and dry-run only. ``range_reversion_v2`` is not built.
 
     ``vol_window`` and ``min_vol`` default to the selected SMA variant:
     20 / 0.0005 for ``sma_cross_v2``, 16 / 0.0002 for the 15m and 5m variants.
@@ -82,6 +96,12 @@ def build_strategy(
             exit_z=exit_z,
             max_slippage_bps=max_slippage_bps,
         )
+    if strategy_id == TREND_BREAKOUT_STRATEGY_ID:
+        return trend_breakout_strategy(
+            stop_atr=stop_atr,
+            round_trip_cost=round_trip_cost,
+            max_slippage_bps=max_slippage_bps,
+        )
     known = ", ".join(KNOWN_STRATEGY_IDS)
     raise ValueError(f"unknown strategy {strategy_id!r}; expected one of: {known}")
 
@@ -99,14 +119,18 @@ __all__ = [
     "HF_MIN_VOL",
     "HF_VOL_WINDOW",
     "KNOWN_STRATEGY_IDS",
+    "DEFAULT_ROUND_TRIP_COST",
+    "DEFAULT_STOP_ATR",
     "MEAN_REVERSION_STRATEGY_ID",
     "SMA_CROSS_15M_STRATEGY_ID",
     "SMA_CROSS_5M_STRATEGY_ID",
+    "TREND_BREAKOUT_STRATEGY_ID",
     "DefaultStrategy",
     "MeanReversion",
     "SMACrossover",
     "Strategy",
     "StrategyContext",
+    "TrendBreakout",
     "build_strategy",
     "close_zscore",
     "default_strategy",
@@ -114,4 +138,5 @@ __all__ = [
     "realized_vol",
     "sma_cross_15m_strategy",
     "sma_cross_5m_strategy",
+    "trend_breakout_strategy",
 ]

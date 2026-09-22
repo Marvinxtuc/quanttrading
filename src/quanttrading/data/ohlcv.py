@@ -18,7 +18,11 @@ def fetch_ohlcv(
     limit: int = 500,
     since_ms: int | None = None,
 ) -> list[Bar]:
-    """Public ccxt OHLCV only — no API keys, no private endpoints."""
+    """Public ccxt OHLCV only — no API keys, no private endpoints.
+
+    Kraken's OHLC endpoint returns at most 720 bars per call. ``limit`` above
+    that is still sent, and Kraken truncates the response.
+    """
     import ccxt
 
     exchange_cls = getattr(ccxt, exchange_id, None)

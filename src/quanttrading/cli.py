@@ -34,16 +34,20 @@ from quanttrading.strategy import (
     DEFAULT_VOL_WINDOW,
     HF_MIN_VOL,
     HF_VOL_WINDOW,
+    DEFAULT_ROUND_TRIP_COST,
+    DEFAULT_STOP_ATR,
     MEAN_REVERSION_STRATEGY_ID,
     SMA_CROSS_15M_STRATEGY_ID,
     SMA_CROSS_5M_STRATEGY_ID,
+    TREND_BREAKOUT_STRATEGY_ID,
     Strategy,
     build_strategy,
 )
 
 _PAPER_STRATEGY_HELP = (
     f"{DEFAULT_STRATEGY_ID} (default), {SMA_CROSS_15M_STRATEGY_ID}, "
-    f"{SMA_CROSS_5M_STRATEGY_ID}, or {MEAN_REVERSION_STRATEGY_ID}"
+    f"{SMA_CROSS_5M_STRATEGY_ID}, {MEAN_REVERSION_STRATEGY_ID}, "
+    f"or {TREND_BREAKOUT_STRATEGY_ID} (paper/dry-run, 4h bars)"
 )
 _SMA_FAST_HELP = "Fast SMA window (SMA cross strategies)."
 _SMA_SLOW_HELP = "Slow SMA window (SMA cross strategies)."
@@ -92,6 +96,8 @@ def _build_strategy(
     lookback: int,
     entry_z: float,
     exit_z: float,
+    stop_atr: float = DEFAULT_STOP_ATR,
+    round_trip_cost: float = DEFAULT_ROUND_TRIP_COST,
 ) -> Strategy:
     try:
         return build_strategy(
@@ -104,6 +110,8 @@ def _build_strategy(
             entry_z=entry_z,
             exit_z=exit_z,
             max_slippage_bps=settings.max_slippage_bps,
+            stop_atr=stop_atr,
+            round_trip_cost=round_trip_cost,
         )
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -114,10 +122,20 @@ def fetch(
     symbol: Optional[str] = typer.Option(None, help="ccxt symbol, e.g. BTC/USD"),
     timeframe: Optional[str] = typer.Option(None),
     exchange: Optional[str] = typer.Option(None, help="ccxt exchange id (public OHLCV only)"),
-    limit: int = typer.Option(500, min=1, max=1000),
+    limit: int = typer.Option(
+        500,
+        min=1,
+        max=1000,
+        help="Bars to request. Kraken public OHLC returns at most 720 per call.",
+    ),
     out: Path = typer.Option(Path("data/btcusd_1h.csv")),
 ) -> None:
-    """Fetch public OHLCV via ccxt (no API keys)."""
+    """Fetch public OHLCV via ccxt (no API keys).
+
+    Kraken's public OHLC endpoint caps one response at 720 bars. A 4h request
+    at that cap is about 120 days. Longer paper history has to come from a CSV
+    you already have.
+    """
     settings = load_settings()
     try:
         bars = fetch_ohlcv(
@@ -161,6 +179,18 @@ def paper(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
+    stop_atr: float = typer.Option(
+        DEFAULT_STOP_ATR,
+        help="Initial and trailing ATR multiple (trend_breakout_v1). Default 2. The stop never moves down.",
+    ),
+    round_trip_cost: float = typer.Option(
+        DEFAULT_ROUND_TRIP_COST,
+        min=0.0,
+        help=(
+            "Assumed round-trip cost fraction for the trend_breakout_v1 cost filter. "
+            "Default 0.003 (30 bps), inside the unverified 0.002–0.004 band. Not a Kraken fee quote."
+        ),
+    ),
 ) -> None:
     """Replay bars through a strategy, the paper broker, and execution risk gates."""
     bars, settings = _load_bars(data, symbol)
@@ -176,6 +206,8 @@ def paper(
         lookback=lookback,
         entry_z=entry_z,
         exit_z=exit_z,
+        stop_atr=stop_atr,
+        round_trip_cost=round_trip_cost,
     )
     result = run_bars(bars, chosen, broker)
     typer.echo(f"paper loop: {len(bars)} bars  strategy={chosen.strategy_id}  state={store_path}")
@@ -224,6 +256,15 @@ def dry_run(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
+    stop_atr: float = typer.Option(
+        DEFAULT_STOP_ATR,
+        help="Initial and trailing ATR multiple (trend_breakout_v1).",
+    ),
+    round_trip_cost: float = typer.Option(
+        DEFAULT_ROUND_TRIP_COST,
+        min=0.0,
+        help="Assumed round-trip cost fraction for trend_breakout_v1. Default 0.003.",
+    ),
 ) -> None:
     """Replay signals through risk gates and record would-be orders. Sends nothing."""
     bars, settings = _load_bars(data, symbol)
@@ -253,6 +294,8 @@ def dry_run(
         lookback=lookback,
         entry_z=entry_z,
         exit_z=exit_z,
+        stop_atr=stop_atr,
+        round_trip_cost=round_trip_cost,
     )
     run_bars(bars, chosen, broker)
     try:
@@ -291,7 +334,10 @@ def live(
     limit: int = typer.Option(200, min=10, max=1000, help="Bars to load with --fetch."),
     strategy: str = typer.Option(
         LIVE_STRATEGY_ID,
-        help="sma_cross_v2 only. 15m/5m paper variants and mean_reversion_v1 are refused.",
+        help=(
+            "sma_cross_v2 only. 15m/5m paper variants, mean_reversion_v1, "
+            "and trend_breakout_v1 are refused."
+        ),
     ),
     per_trade_pct: float = typer.Option(
         LIVE_PER_TRADE_DEFAULT,
@@ -434,6 +480,12 @@ def backtest(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
+    stop_atr: float = typer.Option(DEFAULT_STOP_ATR, help="Initial and trailing ATR multiple (trend_breakout_v1)."),
+    round_trip_cost: float = typer.Option(
+        DEFAULT_ROUND_TRIP_COST,
+        min=0.0,
+        help="Assumed round-trip cost fraction for trend_breakout_v1. Default 0.003.",
+    ),
 ) -> None:
     """Historical bars + pluggable strategy, same signal → execution interface as paper."""
     bars, settings = _load_bars(data, symbol)
@@ -447,6 +499,8 @@ def backtest(
         lookback=lookback,
         entry_z=entry_z,
         exit_z=exit_z,
+        stop_atr=stop_atr,
+        round_trip_cost=round_trip_cost,
     )
     result = run_backtest(bars, chosen, settings)
     typer.echo(f"backtest: {len(bars)} bars  strategy={chosen.strategy_id}")

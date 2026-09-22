@@ -8,7 +8,7 @@ from urllib.parse import quote
 
 from quanttrading.config import Settings
 from quanttrading.execution.base import ExecutionReport
-from quanttrading.execution.fills import Fill, estimated_notional, to_base
+from quanttrading.execution.fills import Fill, estimated_notional, execution_timing_error, market_anchor_price, to_base
 from quanttrading.execution.market_meta import MarketConstraints, MarketMetadata, StaticMarketMetadata
 from quanttrading.execution.paper import PaperBroker, fill_price_market
 from quanttrading.market import Bar
@@ -49,8 +49,9 @@ def build_would_be_order(
 ) -> tuple[WouldBeOrder, str | None]:
     """Build the order a live broker would send, plus a size-invalid reason.
 
-    Base qty uses the bar (close for market, ticked limit for limit) so the
-    hypothetical book matches paper. ``last_price`` does not resize the order.
+    Base qty uses the bar (close for market, open when ``meta['fill_on']`` is
+    ``open``, ticked limit for limit) so the hypothetical book matches paper.
+    ``last_price`` does not resize the order.
     When both ``last_price`` and ``min_cost`` are set, the same base qty must
     also clear ``min_cost`` at that public last.
     """
@@ -60,7 +61,7 @@ def build_would_be_order(
         price = round_to_tick(float(signal.limit_price), constraints.price_tick)
         limit_price: float | None = price
     else:
-        price = bar.close
+        price = market_anchor_price(signal, bar)
         limit_price = None
 
     if price <= 0:
@@ -107,7 +108,7 @@ def _hypothetical_fill(signal: Signal, bar: Bar, order: WouldBeOrder) -> Fill | 
     """Tape fill for the hypothetical book. Not an exchange acknowledgement."""
     side = order.side
     if signal.order_type == "market":
-        price = fill_price_market(bar.close, side, signal.max_slippage_bps)
+        price = fill_price_market(market_anchor_price(signal, bar), side, signal.max_slippage_bps)
     else:
         limit = order.limit_price
         if limit is None:
@@ -158,10 +159,31 @@ class DryRunBroker(PaperBroker):
         signal = Signal.model_validate(signal.model_dump())
         self.marks[bar.symbol] = bar.close
         self.risk.on_mark(bar.ts, self.equity())
+        timing = execution_timing_error(signal, bar)
+        ts = bar.ts.isoformat().replace("+00:00", "Z")
+        if timing is not None:
+            self._record(
+                signal,
+                ts,
+                status="rejected",
+                reason=timing,
+                qty_base=0.0,
+                price=market_anchor_price(signal, bar),
+                notional=0.0,
+                order_type=signal.order_type,
+                limit_price=signal.limit_price,
+            )
+            self.store.commit()
+            return ExecutionReport(
+                status="rejected",
+                client_order_id=signal.client_order_id,
+                reason=timing,
+                equity=self.equity(),
+            )
+
         working = self._prepare(signal)
         notional = estimated_notional(working, bar)
         decision = self.risk.evaluate(intent=working.intent, notional=notional, equity=self.equity())
-        ts = bar.ts.isoformat().replace("+00:00", "Z")
 
         if not decision.allowed:
             qty_base = _estimate_base(working, bar)
@@ -171,7 +193,7 @@ class DryRunBroker(PaperBroker):
                 status="rejected",
                 reason=decision.reason,
                 qty_base=qty_base,
-                price=bar.close,
+                price=market_anchor_price(working, bar),
                 notional=notional,
                 order_type=working.order_type,
                 limit_price=working.limit_price,
@@ -291,7 +313,7 @@ class DryRunBroker(PaperBroker):
 
 
 def _estimate_base(signal: Signal, bar: Bar) -> float:
-    price = signal.limit_price if signal.order_type == "limit" and signal.limit_price else bar.close
+    price = signal.limit_price if signal.order_type == "limit" and signal.limit_price else market_anchor_price(signal, bar)
     if price <= 0 or signal.qty <= 0:
         return 0.0
     try:
