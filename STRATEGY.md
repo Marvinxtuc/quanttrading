@@ -1,0 +1,111 @@
+# trend_breakout_v1
+
+Paper and dry-run only. `quanttrading live` stays on `sma_cross_v2` and the 1h default. This strategy does not change those defaults and does not raise the 1% / 3% / 20% execution gates.
+
+`range_reversion_v2` is named in research brief v0 and is not implemented.
+
+The numbers below are a first version. They are not fitted and not verified on a backtest. This file does not report PnL.
+
+## Market
+
+| Item | Value |
+| --- | --- |
+| Venue | Kraken spot |
+| Symbol | `BTC/USD` |
+| Side | Long only, no leverage, no scale-in |
+| Bars | 4h. The strategy does not resample; each CSV row is one bar |
+
+Signal on the **closed** 4h bar. The earliest fill is the **next** bar's open. Nothing in the decision reads the fill bar's high, low, or close.
+
+`Signal.ts` and `meta.exec_ts` are the fill bar. `meta.signal_ts` is the closed bar that formed the decision. `meta.fill_on` is `open`. The paper and dry-run brokers fill that open (with the usual slippage) and reject the order when `exec_ts` is not the submitted bar or when `signal_ts` is not strictly earlier.
+
+## Indicators
+
+Computed on closed bars only.
+
+| Indicator | Length | Method |
+| --- | --- | --- |
+| EMA fast | 50 | SMA seed, then `2 / (period + 1)` |
+| EMA slow | 200 | same |
+| ATR | 14 | Wilder. First value is the average of the first 14 true ranges (`period + 1` bars) |
+| ADX | 14 | Wilder DX, then Wilder smooth. First value needs `2 * period` bars |
+
+Warm-up is the slow EMA (200 closes) together with a 55-bar high behind the signal bar. ADX is ready before that.
+
+## Parameters (first version, unverified)
+
+| Parameter | Default | Role |
+| --- | --- | --- |
+| `ema_fast` | 50 | Trend direction |
+| `ema_slow` | 200 | Trend direction |
+| `atr_period` | 14 | Stop distance and breakout band |
+| `adx_period` | 14 | Trend strength |
+| `adx_min` | 25 | ADX must be at least this |
+| `breakout_lookback` | 55 | Prior highs, excluding the signal bar |
+| `breakout_atr` | 0.1 | Close must clear that high by this many ATRs |
+| `max_chase_atr` | 1.0 | Close may not extend past that high by more than this many ATRs |
+| `stop_atr` (`k`) | 2.0 | Initial stop and trail. `--stop-atr` |
+| `assumed_round_trip_cost_pct` | **0.003** | Cost filter. `--round-trip-cost`. See below |
+| `trend_break_lookback` | 10 | Prior lows, excluding the signal bar |
+| `follow_through_bars` | 30 | 30 bars of 4h is 5 days |
+| `cooldown_bars` | 3 | Closed bars after an exit fill with no new entry |
+| slippage | settings, default 5 bps | Same market slippage as the other strategies |
+
+### Cost default
+
+`0.003` is 30 bps round trip, the midpoint of the brief's example band **0.002–0.004**. It is an assumption for the filter, not a measured Kraken fee schedule. The filter uses the signal-bar close as `entry_price` (the next open is not known yet):
+
+```
+(k * ATR14) / close >= 2 * assumed_round_trip_cost_pct
+```
+
+With the defaults that is `2 * ATR14 / close >= 0.006`.
+
+## Entry
+
+All of these must hold on the closed bar. Otherwise there is no order.
+
+1. `close > EMA200` and `EMA50 > EMA200`
+2. `ADX14 >= 25`
+3. `close > max(high of the prior 55 bars) + 0.1 * ATR14`
+4. `(close - that 55-high) <= 1.0 * ATR14`
+5. Cost filter above
+6. Flat: no open BTC position and no buy already waiting for the next bar
+
+One open at a time. No add-on after a loser, and no second buy while a buy is pending. Size is `equity * per_trade_pct` in quote USD. The execution layer still rejects opens outside 1% notional, the 3% daily loss breaker, and the 20% drawdown halt.
+
+`planned_stop_risk_fraction` on the signal meta is the equity fraction that would be lost if the locked stop fills at that quote size. It does not change the size.
+
+## Exits
+
+Decided on a closed bar, filled on the next open. No fixed percent take-profit.
+
+| Exit | Rule |
+| --- | --- |
+| Initial stop | Fill open minus `k * ATR14` from the **signal** bar. Locked. A later, larger ATR cannot move the stop down |
+| Trail | After the bar is checked against the stop already in force, `stop = max(stop, close - k * ATR14)`. The new level is used starting the next bar |
+| Stop touch | This bar's low is at or below the stop that was already active. The fill is still the next open, not the stop price |
+| Trend break | `close < min(low of the prior 10 bars)` |
+| No follow-through | After 30 closed bars in the trade, if no close has reached `entry + initial_stop_distance`, exit. The entry bar counts. The target is one stop-distance above the fill, not a take-profit |
+| Halt | The execution halt flag uses the same next-bar flatten |
+
+If several fire on one bar, the order is halt, stop, trend break, then no follow-through.
+
+## Cooldown
+
+After the exit **fill**, the next 3 closed bars cannot form a new entry. The earliest new entry decision is the bar after those three, and that order fills one bar later.
+
+## Kraken 720-bar limit
+
+Kraken's public OHLC endpoint returns at most 720 candles per request. `quanttrading fetch --limit` larger than 720 is truncated. 720 bars of 4h is about 120 days, which covers the 200-bar EMA warm-up. A longer replay needs a CSV you already fetched or saved.
+
+## Run paper on 4h data
+
+```bash
+quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 4h --limit 720 --out data/btcusd_4h.csv
+quanttrading paper --strategy trend_breakout_v1 --data data/btcusd_4h.csv --state state/paper_trend.sqlite
+quanttrading dry-run --strategy trend_breakout_v1 --data data/btcusd_4h.csv \
+  --state state/dry_run_trend.sqlite --per-trade-pct 0.005
+```
+
+Use a different `--state` file from `sma_cross_v2`. A quiet or short file can print `n_fills` of 0 until warm-up plus a breakout; that is still a valid paper run. `--stop-atr` and `--round-trip-cost` override the two defaults above. The other parameters stay at the table until the constructor is called from code.

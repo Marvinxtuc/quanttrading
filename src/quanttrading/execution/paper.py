@@ -5,7 +5,7 @@ from pathlib import Path
 
 from quanttrading.config import Settings
 from quanttrading.execution.base import ExecutionReport
-from quanttrading.execution.fills import Fill, estimated_notional, simulate_fill
+from quanttrading.execution.fills import Fill, estimated_notional, execution_timing_error, simulate_fill
 from quanttrading.execution.risk import RiskGate, RiskLimits
 from quanttrading.execution.store import SQLiteStore
 from quanttrading.market import Bar
@@ -76,6 +76,22 @@ class PaperBroker:
         signal = Signal.model_validate(signal.model_dump())
         self.marks[bar.symbol] = bar.close
         self.risk.on_mark(bar.ts, self.equity())
+
+        timing = execution_timing_error(signal, bar)
+        if timing is not None:
+            self.store.record_reject(
+                signal.client_order_id,
+                bar.ts.isoformat().replace("+00:00", "Z"),
+                signal.symbol,
+                timing,
+            )
+            self.store.commit()
+            return ExecutionReport(
+                status="rejected",
+                client_order_id=signal.client_order_id,
+                reason=timing,
+                equity=self.equity(),
+            )
 
         working = self._prepare(signal)
         notional = estimated_notional(working, bar)

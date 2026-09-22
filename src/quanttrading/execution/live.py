@@ -15,7 +15,7 @@ from typing import Any
 from quanttrading.config import Settings
 from quanttrading.execution.base import ExecutionReport
 from quanttrading.execution.dry_run import build_would_be_order
-from quanttrading.execution.fills import Fill, estimated_notional, to_base
+from quanttrading.execution.fills import Fill, estimated_notional, market_anchor_price, to_base
 from quanttrading.execution.market_meta import MarketConstraints, MarketMetadata, StaticMarketMetadata
 from quanttrading.execution.paper import PaperBroker, Position
 from quanttrading.market import Bar
@@ -609,7 +609,7 @@ class LiveBroker(PaperBroker):
 
 
 def _estimate_base(signal: Signal, bar: Bar) -> float:
-    price = signal.limit_price if signal.order_type == "limit" and signal.limit_price else bar.close
+    price = signal.limit_price if signal.order_type == "limit" and signal.limit_price else market_anchor_price(signal, bar)
     if price <= 0 or signal.qty <= 0:
         return 0.0
     try:
