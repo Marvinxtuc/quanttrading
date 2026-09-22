@@ -55,7 +55,7 @@ A deterministic synthetic sample is also bundled at `src/quanttrading/samples/bt
 
 ## Run the paper loop
 
-Default strategy is `sma_cross_v2`. `--strategy mean_reversion_v1` runs the short-window mean-reversion comparison on the same Kraken `BTC/USD` bars, paper broker, and risk gates (per-trade 1%, daily loss breaker 3%, max drawdown 20%).
+Default strategy is `sma_cross_v2` on 1h bars. `--strategy mean_reversion_v1` runs the short-window mean-reversion comparison on the same Kraken `BTC/USD` bars, paper broker, and risk gates (per-trade 1%, daily loss breaker 3%, max drawdown 20%). `sma_cross_15m_v1` and `sma_cross_5m_v1` are paper-only SMA variants for 15m and 5m bars. They use the same gates and do not replace the live default.
 
 ```bash
 # sma_cross_v2 (default — omitting --strategy is the same)
@@ -65,6 +65,10 @@ quanttrading paper --strategy sma_cross_v2 --data data/btcusd_1h.csv --state sta
 # mean_reversion_v1
 quanttrading paper --strategy mean_reversion_v1
 quanttrading paper --strategy mean_reversion_v1 --data data/btcusd_1h.csv --state state/paper_mr.sqlite --lookback 20 --entry-z 1.5 --exit-z 0
+
+# 15m / 5m SMA paper variants (fetch commands are in the section below)
+quanttrading paper --strategy sma_cross_15m_v1 --data data/btcusd_15m.csv --state state/paper_15m.sqlite
+quanttrading paper --strategy sma_cross_5m_v1 --data data/btcusd_5m.csv --state state/paper_5m.sqlite
 ```
 
 Same pipeline as a historical backtest (in-memory store):
@@ -72,6 +76,8 @@ Same pipeline as a historical backtest (in-memory store):
 ```bash
 quanttrading backtest --data data/btcusd_1h.csv
 quanttrading backtest --strategy mean_reversion_v1 --data data/btcusd_1h.csv
+quanttrading backtest --strategy sma_cross_15m_v1 --data data/btcusd_15m.csv
+quanttrading backtest --strategy sma_cross_5m_v1 --data data/btcusd_5m.csv
 ```
 
 Both print metrics: trade days, Sharpe (crypto, 365), max drawdown, win rate, profit factor, halt state.
@@ -128,7 +134,29 @@ Long-only fast/slow SMA crossover (defaults 10 / 30) plus a **min-vol filter** o
 
 `client_order_id` is deterministic from strategy id, symbol, bar timestamp, intent, and side so paper replays are stable. Risk kill-switches stay in the execution layer.
 
-`--fast`, `--slow`, `--vol-window`, and `--min-vol` apply to `sma_cross_v2` only.
+`--fast` and `--slow` apply to every SMA cross strategy (default 10 / 30). `--vol-window` and `--min-vol` override that strategy's open filter. Omit them to keep `sma_cross_v2` at 20 / `0.0005` and the 15m and 5m variants at 16 / `0.0002`. Those flags do not apply to `mean_reversion_v1`.
+
+### Higher-frequency SMA paper variants
+
+`sma_cross_15m_v1` and `sma_cross_5m_v1` use the same long-only SMA 10/30 cross, market orders, quote sizing, and Signal → submit path as `sma_cross_v2`. Risk gates stay 1% / 3% / 20% in the execution layer. The only default change is the open filter: `vol_window=16` and `min_vol=0.0002` (v2 is 20 and `0.0005`). Closes are still not vol-filtered. `quanttrading live` refuses both ids and keeps sending `sma_cross_v2` on the 1h default timeframe.
+
+Give each variant its own `--state` file. The strategy does not read the candle size; pass bars from `quanttrading fetch --timeframe`.
+
+#### 1h paper acceptance (15m and 5m)
+
+Paper replays a CSV once, the same way the 1h command does. It does not sleep for an hour. SMA warm-up is `slow + 1` = 31 bars before a cross can fire (`vol_window + 1` = 17 closes fits inside that). Fetch Kraken `BTC/USD` so the bars after that warm-up cover about one hour of wall clock: **4×15m** or **12×5m**.
+
+```bash
+# 15m: 31 warm-up bars + 4 bars (1 hour) = 35
+quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 15m --limit 35 --out data/btcusd_15m.csv
+quanttrading paper --strategy sma_cross_15m_v1 --data data/btcusd_15m.csv --state state/paper_15m.sqlite
+
+# 5m: 31 warm-up bars + 12 bars (1 hour) = 43
+quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 5m --limit 43 --out data/btcusd_5m.csv
+quanttrading paper --strategy sma_cross_5m_v1 --data data/btcusd_5m.csv --state state/paper_5m.sqlite
+```
+
+Raise `--limit` when you want a longer replay. A quiet hour can print `n_fills` of 0; the run is still the acceptance check (strategy id, paper book, unchanged risk gates). Use a separate state file from `state/paper.sqlite`.
 
 ### Comparison strategy (`mean_reversion_v1`)
 
@@ -146,7 +174,7 @@ The SMA min-vol filter is not applied. That filter skips quiet *trend* opens; th
 
 `quanttrading dry-run` replays the same bars → strategy → `ExecutionBackend.submit` path as paper, then records the order that **would** be sent. It does not place exchange orders and does not read API keys. There is no `--live` flag on `paper` or `dry-run`. A bare `LiveBroker()` still raises and does not send.
 
-Default strategy is `sma_cross_v2`. `mean_reversion_v1` stays selectable. Trial size defaults to **0.5%** of equity (`--per-trade-pct 0.005`), not the paper 1%. Use `0.002`–`0.005` for a 0.2%–0.5% trial. Pass `--per-trade-pct 0.01` when you want the dry-run book to match a paper run that used the config default.
+Default strategy is `sma_cross_v2`. `mean_reversion_v1`, `sma_cross_15m_v1`, and `sma_cross_5m_v1` stay selectable. Trial size defaults to **0.5%** of equity (`--per-trade-pct 0.005`), not the paper 1%. Use `0.002`–`0.005` for a 0.2%–0.5% trial. Pass `--per-trade-pct 0.01` when you want the dry-run book to match a paper run that used the config default.
 
 ```bash
 quanttrading dry-run
@@ -163,7 +191,7 @@ Offline (the default) sizes market orders from the bar close, same quote→base 
 
 ## Live (Kraken, `sma_cross_v2` only)
 
-`quanttrading live` places real Kraken spot orders. Nothing else does. `mean_reversion_v1` is refused. The venue must be Kraken.
+`quanttrading live` places real Kraken spot orders. Nothing else does. `mean_reversion_v1`, `sma_cross_15m_v1`, and `sma_cross_5m_v1` are refused. The venue must be Kraken. The default live strategy and timeframe stay `sma_cross_v2` and 1h.
 
 Trial size is **0.2%–0.5%** of exchange equity (`--per-trade-pct` `0.002`–`0.005`). The default is **0.005** (0.5%). Paper's 1% is rejected here even if `PER_TRADE_PCT=0.01` is set for the paper book. The same execution risk gates apply: per-trade notional, daily loss breaker (3%), and total drawdown (20%). A halt rejects new opens. Closes and halt-flatten are still sent.
 
@@ -210,7 +238,7 @@ quanttrading status-ui --state state/live.sqlite --host 127.0.0.1 --port 8787
 python -m pytest
 ```
 
-Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math, dry-run risk reject / size check (no network), live risk reject and mocked order submit (no network), read-only status page.
+Coverage: signal contract validation, `sma_cross_v2`, `sma_cross_15m_v1`, `sma_cross_5m_v1`, and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math, dry-run risk reject / size check (no network), live risk reject and mocked order submit (no network), read-only status page.
 
 ## Layout
 
@@ -218,7 +246,7 @@ Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` →
 src/quanttrading/
   signals.py           # Signal contract v0.1 (pydantic, JSON-serializable)
   data/ohlcv.py        # ccxt public fetch, CSV, synthetic sample
-  strategy/sma.py      # default strategy: SMA crossover + min-vol filter (`sma_cross_v2`)
+  strategy/sma.py      # SMA crossover + min-vol filter (`sma_cross_v2`, `sma_cross_15m_v1`, `sma_cross_5m_v1`)
   strategy/mean_reversion.py  # comparison: short-window mean reversion (`mean_reversion_v1`)
   execution/base.py    # shared ExecutionBackend protocol
   execution/paper.py   # sim fills, positions, equity, SQLite

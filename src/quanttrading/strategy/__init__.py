@@ -15,13 +15,29 @@ from quanttrading.strategy.sma import (
     DEFAULT_SLIPPAGE_BPS,
     DEFAULT_STRATEGY_ID,
     DEFAULT_VOL_WINDOW,
+    HF_MIN_VOL,
+    HF_VOL_WINDOW,
+    SMA_CROSS_15M_STRATEGY_ID,
+    SMA_CROSS_5M_STRATEGY_ID,
     DefaultStrategy,
     SMACrossover,
     default_strategy,
     realized_vol,
+    sma_cross_15m_strategy,
+    sma_cross_5m_strategy,
 )
 
-KNOWN_STRATEGY_IDS = (DEFAULT_STRATEGY_ID, MEAN_REVERSION_STRATEGY_ID)
+KNOWN_STRATEGY_IDS = (
+    DEFAULT_STRATEGY_ID,
+    SMA_CROSS_15M_STRATEGY_ID,
+    SMA_CROSS_5M_STRATEGY_ID,
+    MEAN_REVERSION_STRATEGY_ID,
+)
+
+_HF_STRATEGY_FACTORIES = {
+    SMA_CROSS_15M_STRATEGY_ID: sma_cross_15m_strategy,
+    SMA_CROSS_5M_STRATEGY_ID: sma_cross_5m_strategy,
+}
 
 
 def build_strategy(
@@ -29,20 +45,34 @@ def build_strategy(
     *,
     fast: int = DEFAULT_FAST,
     slow: int = DEFAULT_SLOW,
-    vol_window: int = DEFAULT_VOL_WINDOW,
-    min_vol: float = DEFAULT_MIN_VOL,
+    vol_window: int | None = None,
+    min_vol: float | None = None,
     lookback: int = DEFAULT_LOOKBACK,
     entry_z: float = DEFAULT_ENTRY_Z,
     exit_z: float = DEFAULT_EXIT_Z,
     max_slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
 ) -> Strategy:
-    """Build a paper/backtest strategy by id. Default remains ``sma_cross_v2``."""
+    """Build a paper/backtest strategy by id. Default remains ``sma_cross_v2``.
+
+    ``vol_window`` and ``min_vol`` default to the selected SMA variant:
+    20 / 0.0005 for ``sma_cross_v2``, 16 / 0.0002 for the 15m and 5m variants.
+    Pass a number to override that variant's open filter.
+    """
     if strategy_id == DEFAULT_STRATEGY_ID:
         return default_strategy(
             fast=fast,
             slow=slow,
-            vol_window=vol_window,
-            min_vol=min_vol,
+            vol_window=DEFAULT_VOL_WINDOW if vol_window is None else vol_window,
+            min_vol=DEFAULT_MIN_VOL if min_vol is None else min_vol,
+            max_slippage_bps=max_slippage_bps,
+        )
+    hf_factory = _HF_STRATEGY_FACTORIES.get(strategy_id)
+    if hf_factory is not None:
+        return hf_factory(
+            fast=fast,
+            slow=slow,
+            vol_window=HF_VOL_WINDOW if vol_window is None else vol_window,
+            min_vol=HF_MIN_VOL if min_vol is None else min_vol,
             max_slippage_bps=max_slippage_bps,
         )
     if strategy_id == MEAN_REVERSION_STRATEGY_ID:
@@ -66,8 +96,12 @@ __all__ = [
     "DEFAULT_SLIPPAGE_BPS",
     "DEFAULT_STRATEGY_ID",
     "DEFAULT_VOL_WINDOW",
+    "HF_MIN_VOL",
+    "HF_VOL_WINDOW",
     "KNOWN_STRATEGY_IDS",
     "MEAN_REVERSION_STRATEGY_ID",
+    "SMA_CROSS_15M_STRATEGY_ID",
+    "SMA_CROSS_5M_STRATEGY_ID",
     "DefaultStrategy",
     "MeanReversion",
     "SMACrossover",
@@ -78,4 +112,6 @@ __all__ = [
     "default_strategy",
     "mean_reversion_strategy",
     "realized_vol",
+    "sma_cross_15m_strategy",
+    "sma_cross_5m_strategy",
 ]

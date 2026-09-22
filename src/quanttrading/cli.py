@@ -32,8 +32,30 @@ from quanttrading.strategy import (
     DEFAULT_MIN_VOL,
     DEFAULT_STRATEGY_ID,
     DEFAULT_VOL_WINDOW,
+    HF_MIN_VOL,
+    HF_VOL_WINDOW,
+    MEAN_REVERSION_STRATEGY_ID,
+    SMA_CROSS_15M_STRATEGY_ID,
+    SMA_CROSS_5M_STRATEGY_ID,
     Strategy,
     build_strategy,
+)
+
+_PAPER_STRATEGY_HELP = (
+    f"{DEFAULT_STRATEGY_ID} (default), {SMA_CROSS_15M_STRATEGY_ID}, "
+    f"{SMA_CROSS_5M_STRATEGY_ID}, or {MEAN_REVERSION_STRATEGY_ID}"
+)
+_SMA_FAST_HELP = "Fast SMA window (SMA cross strategies)."
+_SMA_SLOW_HELP = "Slow SMA window (SMA cross strategies)."
+_SMA_VOL_WINDOW_HELP = (
+    "Realized-vol window for SMA cross strategies. "
+    f"Default {DEFAULT_VOL_WINDOW} ({DEFAULT_STRATEGY_ID}) or "
+    f"{HF_VOL_WINDOW} ({SMA_CROSS_15M_STRATEGY_ID}, {SMA_CROSS_5M_STRATEGY_ID})."
+)
+_SMA_MIN_VOL_HELP = (
+    "Min realized vol to open for SMA cross strategies. "
+    f"Default {DEFAULT_MIN_VOL:g} ({DEFAULT_STRATEGY_ID}) or "
+    f"{HF_MIN_VOL:g} ({SMA_CROSS_15M_STRATEGY_ID}, {SMA_CROSS_5M_STRATEGY_ID})."
 )
 
 app = typer.Typer(
@@ -65,8 +87,8 @@ def _build_strategy(
     *,
     fast: int,
     slow: int,
-    vol_window: int,
-    min_vol: float,
+    vol_window: int | None,
+    min_vol: float | None,
     lookback: int,
     entry_z: float,
     exit_z: float,
@@ -130,12 +152,12 @@ def paper(
     symbol: Optional[str] = typer.Option(None),
     strategy: str = typer.Option(
         DEFAULT_STRATEGY_ID,
-        help="sma_cross_v2 (default) or mean_reversion_v1",
+        help=_PAPER_STRATEGY_HELP,
     ),
-    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
-    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
-    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
-    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    fast: int = typer.Option(10, min=2, help=_SMA_FAST_HELP),
+    slow: int = typer.Option(30, min=3, help=_SMA_SLOW_HELP),
+    vol_window: Optional[int] = typer.Option(None, min=2, show_default=False, help=_SMA_VOL_WINDOW_HELP),
+    min_vol: Optional[float] = typer.Option(None, min=0.0, show_default=False, help=_SMA_MIN_VOL_HELP),
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
@@ -178,7 +200,7 @@ def dry_run(
     symbol: Optional[str] = typer.Option(None),
     strategy: str = typer.Option(
         DEFAULT_STRATEGY_ID,
-        help="sma_cross_v2 (default) or mean_reversion_v1",
+        help=_PAPER_STRATEGY_HELP,
     ),
     per_trade_pct: float = typer.Option(
         0.005,
@@ -195,10 +217,10 @@ def dry_run(
         None,
         help="ccxt id for --public-markets only. Public metadata; keys are refused.",
     ),
-    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
-    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
-    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
-    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    fast: int = typer.Option(10, min=2, help=_SMA_FAST_HELP),
+    slow: int = typer.Option(30, min=3, help=_SMA_SLOW_HELP),
+    vol_window: Optional[int] = typer.Option(None, min=2, show_default=False, help=_SMA_VOL_WINDOW_HELP),
+    min_vol: Optional[float] = typer.Option(None, min=0.0, show_default=False, help=_SMA_MIN_VOL_HELP),
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
@@ -269,7 +291,7 @@ def live(
     limit: int = typer.Option(200, min=10, max=1000, help="Bars to load with --fetch."),
     strategy: str = typer.Option(
         LIVE_STRATEGY_ID,
-        help="sma_cross_v2 only. mean_reversion_v1 is refused.",
+        help="sma_cross_v2 only. 15m/5m paper variants and mean_reversion_v1 are refused.",
     ),
     per_trade_pct: float = typer.Option(
         LIVE_PER_TRADE_DEFAULT,
@@ -403,12 +425,12 @@ def backtest(
     symbol: Optional[str] = typer.Option(None),
     strategy: str = typer.Option(
         DEFAULT_STRATEGY_ID,
-        help="sma_cross_v2 (default) or mean_reversion_v1",
+        help=_PAPER_STRATEGY_HELP,
     ),
-    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
-    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
-    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
-    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    fast: int = typer.Option(10, min=2, help=_SMA_FAST_HELP),
+    slow: int = typer.Option(30, min=3, help=_SMA_SLOW_HELP),
+    vol_window: Optional[int] = typer.Option(None, min=2, show_default=False, help=_SMA_VOL_WINDOW_HELP),
+    min_vol: Optional[float] = typer.Option(None, min=0.0, show_default=False, help=_SMA_MIN_VOL_HELP),
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),

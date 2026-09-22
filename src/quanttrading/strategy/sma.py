@@ -16,6 +16,13 @@ DEFAULT_VOL_WINDOW = 20
 DEFAULT_MIN_VOL = 0.0005
 DEFAULT_SLIPPAGE_BPS = 5.0
 
+# Paper-only 15m and 5m variants. Same 10/30 cross as v2; relaxed open filter.
+# ``quanttrading live`` stays on ``sma_cross_v2``.
+HF_VOL_WINDOW = 16
+HF_MIN_VOL = 0.0002
+SMA_CROSS_15M_STRATEGY_ID = "sma_cross_15m_v1"
+SMA_CROSS_5M_STRATEGY_ID = "sma_cross_5m_v1"
+
 
 def realized_vol(closes: list[float], window: int) -> float | None:
     """Population std of simple close-to-close returns over ``window`` returns.
@@ -201,6 +208,71 @@ def default_strategy(
 ) -> SMACrossover:
     """Factory for the default paper/backtest strategy (SMA cross + min-vol filter)."""
     return SMACrossover(
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        max_slippage_bps=max_slippage_bps,
+    )
+
+
+def _hf_sma(
+    strategy_id: str,
+    *,
+    fast: int,
+    slow: int,
+    vol_window: int,
+    min_vol: float,
+    max_slippage_bps: float,
+) -> SMACrossover:
+    return SMACrossover(
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        strategy_id=strategy_id,
+        max_slippage_bps=max_slippage_bps,
+    )
+
+
+def sma_cross_15m_strategy(
+    *,
+    fast: int = DEFAULT_FAST,
+    slow: int = DEFAULT_SLOW,
+    vol_window: int = HF_VOL_WINDOW,
+    min_vol: float = HF_MIN_VOL,
+    max_slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+) -> SMACrossover:
+    """15m paper variant: SMA 10/30 cross, ``vol_window=16``, ``min_vol=0.0002``.
+
+    Same Signal → submit rules as ``sma_cross_v2``. Opens still need realized
+    vol ``>= min_vol``; closes are not filtered. Not enabled for live orders.
+    """
+    return _hf_sma(
+        SMA_CROSS_15M_STRATEGY_ID,
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        max_slippage_bps=max_slippage_bps,
+    )
+
+
+def sma_cross_5m_strategy(
+    *,
+    fast: int = DEFAULT_FAST,
+    slow: int = DEFAULT_SLOW,
+    vol_window: int = HF_VOL_WINDOW,
+    min_vol: float = HF_MIN_VOL,
+    max_slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
+) -> SMACrossover:
+    """5m paper variant: SMA 10/30 cross, ``vol_window=16``, ``min_vol=0.0002``.
+
+    Same Signal → submit rules as ``sma_cross_v2``. Opens still need realized
+    vol ``>= min_vol``; closes are not filtered. Not enabled for live orders.
+    """
+    return _hf_sma(
+        SMA_CROSS_5M_STRATEGY_ID,
         fast=fast,
         slow=slow,
         vol_window=vol_window,
