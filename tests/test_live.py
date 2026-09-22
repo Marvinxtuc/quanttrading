@@ -452,7 +452,13 @@ def test_synced_long_does_not_open_again_on_the_same_cross() -> None:
 def test_non_default_strategies_cannot_run_live() -> None:
     from quanttrading.strategy import build_strategy
 
-    for strategy_id in ("mean_reversion_v1", "sma_cross_15m_v1", "sma_cross_5m_v1", "trend_breakout_v1"):
+    for strategy_id in (
+        "mean_reversion_v1",
+        "sma_cross_15m_v1",
+        "sma_cross_5m_v1",
+        "trend_breakout_v1",
+        "range_reversion_v2",
+    ):
         fake = FakeKraken()
         broker = _broker(fake)
         with pytest.raises(ValueError, match="sma_cross_v2"):
@@ -668,7 +674,13 @@ def test_live_cli_refuses_other_strategies_sizes_and_venues(monkeypatch: pytest.
     csv_path = tmp_path / "bars.csv"
     save_csv(bars_from_closes([100.0] * 5), csv_path)
     state = tmp_path / "live.sqlite"
-    for strategy_id in ("mean_reversion_v1", "sma_cross_15m_v1", "sma_cross_5m_v1", "trend_breakout_v1"):
+    for strategy_id in (
+        "mean_reversion_v1",
+        "sma_cross_15m_v1",
+        "sma_cross_5m_v1",
+        "trend_breakout_v1",
+        "range_reversion_v2",
+    ):
         other = RUNNER.invoke(
             app,
             ["live", "--strategy", strategy_id, "--data", str(csv_path), "--state", str(state)],

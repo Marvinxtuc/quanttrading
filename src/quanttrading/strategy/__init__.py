@@ -8,6 +8,13 @@ from quanttrading.strategy.mean_reversion import (
     close_zscore,
     mean_reversion_strategy,
 )
+from quanttrading.strategy.range_reversion import (
+    DEFAULT_ROUND_TRIP_COST as RANGE_DEFAULT_ROUND_TRIP_COST,
+    DEFAULT_STOP_ATR as RANGE_DEFAULT_STOP_ATR,
+    RANGE_REVERSION_STRATEGY_ID,
+    RangeReversion,
+    range_reversion_strategy,
+)
 from quanttrading.strategy.trend_breakout import (
     DEFAULT_ROUND_TRIP_COST,
     DEFAULT_STOP_ATR,
@@ -34,13 +41,13 @@ from quanttrading.strategy.sma import (
     sma_cross_5m_strategy,
 )
 
-# range_reversion_v2 is named in research brief v0 and is not implemented.
 KNOWN_STRATEGY_IDS = (
     DEFAULT_STRATEGY_ID,
     SMA_CROSS_15M_STRATEGY_ID,
     SMA_CROSS_5M_STRATEGY_ID,
     MEAN_REVERSION_STRATEGY_ID,
     TREND_BREAKOUT_STRATEGY_ID,
+    RANGE_REVERSION_STRATEGY_ID,
 )
 
 _HF_STRATEGY_FACTORIES = {
@@ -60,13 +67,14 @@ def build_strategy(
     entry_z: float = DEFAULT_ENTRY_Z,
     exit_z: float = DEFAULT_EXIT_Z,
     max_slippage_bps: float = DEFAULT_SLIPPAGE_BPS,
-    stop_atr: float = DEFAULT_STOP_ATR,
+    stop_atr: float | None = None,
     round_trip_cost: float = DEFAULT_ROUND_TRIP_COST,
 ) -> Strategy:
     """Build a paper/backtest strategy by id. Default remains ``sma_cross_v2``.
 
-    ``stop_atr`` and ``round_trip_cost`` apply only to ``trend_breakout_v1``.
-    That id is paper and dry-run only. ``range_reversion_v2`` is not built.
+    ``stop_atr`` and ``round_trip_cost`` apply to ``trend_breakout_v1`` and
+    ``range_reversion_v2`` (each has its own stop default when ``stop_atr`` is
+    omitted). Both ids are paper and dry-run only.
 
     ``vol_window`` and ``min_vol`` default to the selected SMA variant:
     20 / 0.0005 for ``sma_cross_v2``, 16 / 0.0002 for the 15m and 5m variants.
@@ -98,7 +106,13 @@ def build_strategy(
         )
     if strategy_id == TREND_BREAKOUT_STRATEGY_ID:
         return trend_breakout_strategy(
-            stop_atr=stop_atr,
+            stop_atr=DEFAULT_STOP_ATR if stop_atr is None else stop_atr,
+            round_trip_cost=round_trip_cost,
+            max_slippage_bps=max_slippage_bps,
+        )
+    if strategy_id == RANGE_REVERSION_STRATEGY_ID:
+        return range_reversion_strategy(
+            stop_atr=RANGE_DEFAULT_STOP_ATR if stop_atr is None else stop_atr,
             round_trip_cost=round_trip_cost,
             max_slippage_bps=max_slippage_bps,
         )
@@ -121,12 +135,16 @@ __all__ = [
     "KNOWN_STRATEGY_IDS",
     "DEFAULT_ROUND_TRIP_COST",
     "DEFAULT_STOP_ATR",
+    "RANGE_DEFAULT_ROUND_TRIP_COST",
+    "RANGE_DEFAULT_STOP_ATR",
     "MEAN_REVERSION_STRATEGY_ID",
+    "RANGE_REVERSION_STRATEGY_ID",
     "SMA_CROSS_15M_STRATEGY_ID",
     "SMA_CROSS_5M_STRATEGY_ID",
     "TREND_BREAKOUT_STRATEGY_ID",
     "DefaultStrategy",
     "MeanReversion",
+    "RangeReversion",
     "SMACrossover",
     "Strategy",
     "StrategyContext",
@@ -135,6 +153,7 @@ __all__ = [
     "close_zscore",
     "default_strategy",
     "mean_reversion_strategy",
+    "range_reversion_strategy",
     "realized_vol",
     "sma_cross_15m_strategy",
     "sma_cross_5m_strategy",

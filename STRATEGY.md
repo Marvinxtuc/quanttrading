@@ -1,10 +1,14 @@
+# Paper strategies (4h)
+
+`quanttrading live` stays on `sma_cross_v2` and the 1h default. The strategies below are paper and dry-run only. They do not change those defaults and do not raise the 1% / 3% / 20% execution gates.
+
+The numbers in this file are a first version. They are not fitted and not verified on a backtest. This file does not report PnL.
+
+**ADX band [18, 25):** neither `range_reversion_v2` nor `trend_breakout_v1` takes a new entry. Range needs ADX14 `< 18`. Trend needs ADX14 `>= 25`. That middle band is intentionally quiet for both.
+
+---
+
 # trend_breakout_v1
-
-Paper and dry-run only. `quanttrading live` stays on `sma_cross_v2` and the 1h default. This strategy does not change those defaults and does not raise the 1% / 3% / 20% execution gates.
-
-`range_reversion_v2` is named in research brief v0 and is not implemented.
-
-The numbers below are a first version. They are not fitted and not verified on a backtest. This file does not report PnL.
 
 ## Market
 
@@ -109,3 +113,113 @@ quanttrading dry-run --strategy trend_breakout_v1 --data data/btcusd_4h.csv \
 ```
 
 Use a different `--state` file from `sma_cross_v2`. A quiet or short file can print `n_fills` of 0 until warm-up plus a breakout; that is still a valid paper run. `--stop-atr` and `--round-trip-cost` override the two defaults above. The other parameters stay at the table until the constructor is called from code.
+
+---
+
+# range_reversion_v2
+
+Independent paper experiment. Not live. Does not change `sma_cross_v2` or `trend_breakout_v1`.
+
+## Market
+
+Same as trend: Kraken spot `BTC/USD`, long only, no leverage, **4h** bars, no resample.
+
+Signal on the **closed** 4h bar. Fill on the **next** bar open. `meta.signal_ts` / `meta.exec_ts` / `meta.fill_on=open` match `trend_breakout_v1`.
+
+## Indicators
+
+| Indicator | Length | Method |
+| --- | --- | --- |
+| EMA fast | 50 | SMA seed, then `2 / (period + 1)` |
+| EMA slow | 200 | same |
+| ATR | 14 | Wilder |
+| ADX | 14 | Wilder |
+| Mean / population std | 48 | Prior closed closes **excluding** the signal bar |
+
+Warm-up is the slow EMA (200 closes). The z-window needs 48 prior closes. Skip when population std is 0 or when any consecutive timestamps in that z-window are not exactly 4h apart (data gap).
+
+## Parameters (first version, unverified)
+
+| Parameter | Default | Role |
+| --- | --- | --- |
+| `ema_fast` | 50 | Compression and regime exit |
+| `ema_slow` | 200 | Compression gate |
+| `atr_period` | 14 | Stop distance (with z-band) |
+| `adx_period` | 14 | Environment and regime exit |
+| `adx_max_entry` | 18 | ADX must be **below** this to enter |
+| `adx_trend_exit` | 25 | With close `< EMA50`, exit |
+| `ema_compression` | 0.01 | `abs(EMA50 / EMA200 - 1)` must be below this |
+| `z_lookback` | 48 | Prior closes for mean/std, excluding signal bar |
+| `entry_z` | 2.0 | Recovery threshold |
+| `stop_atr` | **1.0** | ATR leg of stop. `--stop-atr` (omit for this default) |
+| `stop_z` | **1.0** | Std leg of stop (`max(stop_atr * ATR, stop_z * std)`) |
+| `assumed_round_trip_cost_pct` | **0.003** | Cost / RR filter. `--round-trip-cost` |
+| `min_rr_after_cost` | 1.0 | `(U - C) / (D + C)` must be at least this |
+| `max_hold_bars` | 18 | 18 × 4h = 72h |
+| `cooldown_bars` | 6 | 6 × 4h = 24h after exit fill |
+| slippage | settings, default 5 bps | Same market slippage; not added again in the RR filter |
+
+### Environment gate
+
+All must hold on the signal bar or there is no entry:
+
+1. `ADX14 < 18`
+2. `abs(EMA50 / EMA200 - 1) < 0.01`
+3. Indicators warmed; std `> 0`; no 4h gap in the z-window
+
+### Entry signal
+
+Mean and population std from the prior **48** closed closes **excluding** the signal bar. Both `z_prev` and `z_curr` use that same window:
+
+```
+z = (close - mean) / std
+```
+
+Trigger (flat only, no pending buy):
+
+- previous bar `z < -2`
+- current bar `z >= -2`
+- current close still `< mean` (recovery back into the band, still below the mean)
+
+### Pre-trade filters (reject if fail)
+
+- **Target:** locked at the signal-bar mean. Later means are not chased.
+- **Stop distance:** `max(1.0 * ATR14, 1.0 * std)` from the signal bar. Applied to the fill open: `stop = entry - distance`. Locked; no trail; no add. (`stop_z = 1.0` is half the entry band so a recovery toward the mean can still clear the RR filter; using `2.0 * std` would make `(U - C) / (D + C) >= 1` unreachable near the `-2` band after cost.)
+- Price basis for the filter is the **signal-bar close** (next open unknown). Slippage is not double-counted here; the broker still applies the usual market slippage on the fill.
+- `U = (target - close) / close`, `D = stop_distance / close`, `C = 0.003`
+- Require `U > C` and `(U - C) / (D + C) >= 1.0`
+
+Size is still `equity * per_trade_pct` in quote. The 1% / 3% / 20% gates stay in the execution layer.
+
+## Exits
+
+Decided on a closed bar, filled on the next open.
+
+| Exit | Rule |
+| --- | --- |
+| Target | Bar high reaches the locked mean |
+| Stop | Bar low reaches the locked initial stop |
+| Max hold | 18 closed bars in the trade without the target (entry bar counts) |
+| Regime | `ADX14 >= 25` and `close < EMA50` |
+| Halt | Execution halt flag → same next-bar flatten |
+
+If several fire on one bar, the order is halt, stop, target, max hold, then regime. Stop is checked before target when the same bar spans both (path unknown).
+
+## Cooldown
+
+After the exit **fill**, the next 6 closed bars cannot form a new entry.
+
+## Kraken 720-bar limit
+
+Same as trend: public OHLC caps at 720 bars (~120 days of 4h), which covers the 200-bar EMA warm-up. Longer history is out of scope here.
+
+## Run paper on 4h data
+
+```bash
+quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 4h --limit 720 --out data/btcusd_4h.csv
+quanttrading paper --strategy range_reversion_v2 --data data/btcusd_4h.csv --state state/paper_range.sqlite
+quanttrading dry-run --strategy range_reversion_v2 --data data/btcusd_4h.csv \
+  --state state/dry_run_range.sqlite --per-trade-pct 0.005
+```
+
+Use a different `--state` file from `sma_cross_v2` and from `trend_breakout_v1`. A quiet or short file can print `n_fills` of 0 until warm-up plus a recovery; that is still a valid paper run.
