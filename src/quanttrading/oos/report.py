@@ -548,6 +548,12 @@ def render_oos_markdown(report: dict[str, Any]) -> str:
             agg = cost_block["aggregate"]
             lines.append(f"#### Cost stress `round_trip={cost_key}`")
             lines.append("")
+            if agg["n_round_trips"] == 0:
+                lines.append(
+                    "> No completed round trips under default parameters on this "
+                    "history. That is a real (quiet) outcome, not a missing run."
+                )
+                lines.append("")
             lines.append(
                 "| Metric | Value |"
             )
