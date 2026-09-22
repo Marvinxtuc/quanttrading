@@ -130,8 +130,7 @@ def test_defaults_match_brief_and_live_default_stays_sma() -> None:
     assert strategy.follow_through_bars == DEFAULT_FOLLOW_THROUGH_BARS == 30
     assert strategy.cooldown_bars == DEFAULT_COOLDOWN_BARS == 3
     assert build_strategy().strategy_id == DEFAULT_STRATEGY_ID == "sma_cross_v2"
-    with pytest.raises(ValueError, match="unknown strategy"):
-        build_strategy("range_reversion_v2")
+    assert build_strategy("range_reversion_v2").strategy_id == "range_reversion_v2"
 
 
 def test_entry_combo_requires_every_gate() -> None:

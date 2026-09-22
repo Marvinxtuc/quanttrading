@@ -35,8 +35,8 @@ from quanttrading.strategy import (
     HF_MIN_VOL,
     HF_VOL_WINDOW,
     DEFAULT_ROUND_TRIP_COST,
-    DEFAULT_STOP_ATR,
     MEAN_REVERSION_STRATEGY_ID,
+    RANGE_REVERSION_STRATEGY_ID,
     SMA_CROSS_15M_STRATEGY_ID,
     SMA_CROSS_5M_STRATEGY_ID,
     TREND_BREAKOUT_STRATEGY_ID,
@@ -47,7 +47,8 @@ from quanttrading.strategy import (
 _PAPER_STRATEGY_HELP = (
     f"{DEFAULT_STRATEGY_ID} (default), {SMA_CROSS_15M_STRATEGY_ID}, "
     f"{SMA_CROSS_5M_STRATEGY_ID}, {MEAN_REVERSION_STRATEGY_ID}, "
-    f"or {TREND_BREAKOUT_STRATEGY_ID} (paper/dry-run, 4h bars)"
+    f"{TREND_BREAKOUT_STRATEGY_ID} (paper/dry-run, 4h), "
+    f"or {RANGE_REVERSION_STRATEGY_ID} (paper/dry-run, 4h)"
 )
 _SMA_FAST_HELP = "Fast SMA window (SMA cross strategies)."
 _SMA_SLOW_HELP = "Slow SMA window (SMA cross strategies)."
@@ -96,7 +97,7 @@ def _build_strategy(
     lookback: int,
     entry_z: float,
     exit_z: float,
-    stop_atr: float = DEFAULT_STOP_ATR,
+    stop_atr: float | None = None,
     round_trip_cost: float = DEFAULT_ROUND_TRIP_COST,
 ) -> Strategy:
     try:
@@ -179,16 +180,19 @@ def paper(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
-    stop_atr: float = typer.Option(
-        DEFAULT_STOP_ATR,
-        help="Initial and trailing ATR multiple (trend_breakout_v1). Default 2. The stop never moves down.",
+    stop_atr: Optional[float] = typer.Option(
+        None,
+        help=(
+            "ATR stop multiple for trend_breakout_v1 (default 2, trails) or "
+            "range_reversion_v2 (default 1, locked). Omit to use that strategy's default."
+        ),
     ),
     round_trip_cost: float = typer.Option(
         DEFAULT_ROUND_TRIP_COST,
         min=0.0,
         help=(
-            "Assumed round-trip cost fraction for the trend_breakout_v1 cost filter. "
-            "Default 0.003 (30 bps), inside the unverified 0.002–0.004 band. Not a Kraken fee quote."
+            "Assumed round-trip cost fraction for trend_breakout_v1 / range_reversion_v2 filters. "
+            "Default 0.003 (30 bps). Not a Kraken fee quote."
         ),
     ),
 ) -> None:
@@ -256,14 +260,17 @@ def dry_run(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
-    stop_atr: float = typer.Option(
-        DEFAULT_STOP_ATR,
-        help="Initial and trailing ATR multiple (trend_breakout_v1).",
+    stop_atr: Optional[float] = typer.Option(
+        None,
+        help=(
+            "ATR stop multiple for trend_breakout_v1 (default 2) or "
+            "range_reversion_v2 (default 1). Omit for that strategy's default."
+        ),
     ),
     round_trip_cost: float = typer.Option(
         DEFAULT_ROUND_TRIP_COST,
         min=0.0,
-        help="Assumed round-trip cost fraction for trend_breakout_v1. Default 0.003.",
+        help="Assumed round-trip cost fraction for 4h paper strategies. Default 0.003.",
     ),
 ) -> None:
     """Replay signals through risk gates and record would-be orders. Sends nothing."""
@@ -336,7 +343,7 @@ def live(
         LIVE_STRATEGY_ID,
         help=(
             "sma_cross_v2 only. 15m/5m paper variants, mean_reversion_v1, "
-            "and trend_breakout_v1 are refused."
+            "trend_breakout_v1, and range_reversion_v2 are refused."
         ),
     ),
     per_trade_pct: float = typer.Option(
@@ -480,11 +487,17 @@ def backtest(
     lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
     entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
     exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
-    stop_atr: float = typer.Option(DEFAULT_STOP_ATR, help="Initial and trailing ATR multiple (trend_breakout_v1)."),
+    stop_atr: Optional[float] = typer.Option(
+        None,
+        help=(
+            "ATR stop multiple for trend_breakout_v1 (default 2) or "
+            "range_reversion_v2 (default 1). Omit for that strategy's default."
+        ),
+    ),
     round_trip_cost: float = typer.Option(
         DEFAULT_ROUND_TRIP_COST,
         min=0.0,
-        help="Assumed round-trip cost fraction for trend_breakout_v1. Default 0.003.",
+        help="Assumed round-trip cost fraction for 4h paper strategies. Default 0.003.",
     ),
 ) -> None:
     """Historical bars + pluggable strategy, same signal → execution interface as paper."""
