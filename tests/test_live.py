@@ -449,14 +449,15 @@ def test_synced_long_does_not_open_again_on_the_same_cross() -> None:
     assert _orders(fake) == []
 
 
-def test_mean_reversion_cannot_run_live() -> None:
+def test_non_default_strategies_cannot_run_live() -> None:
     from quanttrading.strategy import build_strategy
 
-    fake = FakeKraken()
-    broker = _broker(fake)
-    with pytest.raises(ValueError, match="sma_cross_v2"):
-        run_live_latest(bars_from_closes(GOLDEN_CROSS), build_strategy("mean_reversion_v1"), broker)
-    assert _orders(fake) == []
+    for strategy_id in ("mean_reversion_v1", "sma_cross_15m_v1", "sma_cross_5m_v1"):
+        fake = FakeKraken()
+        broker = _broker(fake)
+        with pytest.raises(ValueError, match="sma_cross_v2"):
+            run_live_latest(bars_from_closes(GOLDEN_CROSS), build_strategy(strategy_id), broker)
+        assert _orders(fake) == []
 
 
 def test_userref_is_stable_and_parse_balance_prefers_unified_codes() -> None:
@@ -667,12 +668,13 @@ def test_live_cli_refuses_other_strategies_sizes_and_venues(monkeypatch: pytest.
     csv_path = tmp_path / "bars.csv"
     save_csv(bars_from_closes([100.0] * 5), csv_path)
     state = tmp_path / "live.sqlite"
-    other = RUNNER.invoke(
-        app,
-        ["live", "--strategy", "mean_reversion_v1", "--data", str(csv_path), "--state", str(state)],
-    )
-    assert other.exit_code != 0
-    assert "sma_cross_v2" in other.output
+    for strategy_id in ("mean_reversion_v1", "sma_cross_15m_v1", "sma_cross_5m_v1"):
+        other = RUNNER.invoke(
+            app,
+            ["live", "--strategy", strategy_id, "--data", str(csv_path), "--state", str(state)],
+        )
+        assert other.exit_code != 0
+        assert "sma_cross_v2" in other.output
 
     wide = RUNNER.invoke(
         app,
