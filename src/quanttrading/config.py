@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     max_slippage_bps: float = Field(default=5.0, ge=0)
     state_path: Path = Path("state/paper.sqlite")
     dry_run_state_path: Path = Path("state/dry_run.sqlite")
+    live_state_path: Path = Path("state/live.sqlite")
 
     @property
     def per_trade_usdt(self) -> float:

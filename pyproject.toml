@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quanttrading"
 version = "0.1.0"
-description = "Local crypto paper-trading MVP: market data → signals → paper/backtest/dry-run → hard risk kill-switch. Dry-run sends no orders."
+description = "Local crypto trading MVP: paper and dry-run send nothing. quanttrading live places Kraken orders for sma_cross_v2 only."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
