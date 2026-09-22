@@ -13,6 +13,8 @@ from quanttrading.execution.dry_run import DryRunBroker, summarize_dry_run
 from quanttrading.execution.market_meta import CcxtPublicMarketMetadata, MarketMetadata, StaticMarketMetadata
 from quanttrading.execution.paper import PaperBroker
 from quanttrading.market import Bar
+from quanttrading.status.server import assert_loopback, serve_status
+from quanttrading.status.snapshot import timeframe_seconds
 from quanttrading.strategy import (
     DEFAULT_ENTRY_Z,
     DEFAULT_EXIT_Z,
@@ -269,6 +271,50 @@ def backtest(
     result = run_backtest(bars, chosen, settings)
     typer.echo(f"backtest: {len(bars)} bars  strategy={chosen.strategy_id}")
     _print_metrics(result.metrics)
+
+
+@app.command("status-ui")
+def status_ui(
+    state: Path = typer.Option(Path("state/paper.sqlite"), "--state", help="Paper or dry-run SQLite book."),
+    host: str = typer.Option("127.0.0.1", "--host", help="Loopback bind address. Non-loopback hosts are refused."),
+    port: int = typer.Option(8787, "--port", min=1, max=65535),
+    refresh_sec: int = typer.Option(10, "--refresh-sec", min=5, max=15, help="Browser refresh interval, 5–15 seconds."),
+    heartbeat: Optional[Path] = typer.Option(
+        None,
+        "--heartbeat",
+        help="Optional JSON heartbeat. Default: <state stem>.heartbeat.json when that file exists.",
+    ),
+    timeframe: Optional[str] = typer.Option(
+        None,
+        "--timeframe",
+        help="Bar size for the stale threshold (2×). Example: 1h, 15m. Default: heartbeat file, else 1h.",
+    ),
+) -> None:
+    """Serve a local read-only status page. Does not place orders or write state."""
+    try:
+        assert_loopback(host)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    if timeframe is not None:
+        try:
+            timeframe_seconds(timeframe)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+    if heartbeat is not None and not heartbeat.is_file():
+        typer.echo(f"heartbeat file not found: {heartbeat}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        serve_status(
+            state=state,
+            host=host,
+            port=port,
+            refresh_sec=refresh_sec,
+            heartbeat=heartbeat,
+            timeframe=timeframe,
+        )
+    except OSError as exc:
+        typer.echo(f"could not bind {host}:{port}: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
 
 
 def main() -> None:

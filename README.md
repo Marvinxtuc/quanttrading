@@ -2,7 +2,7 @@
 
 Local crypto **paper-trading** MVP: public market data → strategy signals → backtest or paper execution → hard risk kill-switch.
 
-This is **not** a broker platform. There is no dashboard, no multi-exchange router, and no live order placement. `LiveBroker` is a stub that raises: it never loads API keys and never sends orders. `quanttrading dry-run` is the pre-live check for `sma_cross_v2` — same risk gates and a would-be order record, still with no keys and no private exchange calls. The paper path never loads API keys.
+This is **not** a broker platform. There is no multi-exchange router and no live order placement. `LiveBroker` is a stub that raises: it never loads API keys and never sends orders. `quanttrading dry-run` is the pre-live check for `sma_cross_v2` — same risk gates and a would-be order record, still with no keys and no private exchange calls. A local read-only status page can show a paper or dry-run book; it cannot trade. The paper path never loads API keys.
 
 ## Baselines (locked in config)
 
@@ -76,6 +76,42 @@ quanttrading backtest --strategy mean_reversion_v1 --data data/btcusd_1h.csv
 
 Both print metrics: trade days, Sharpe (crypto, 365), max drawdown, win rate, profit factor, halt state.
 
+## Status dashboard
+
+Local read-only page for a paper or dry-run SQLite book. It has no order buttons, no APIs that change trading state, and it does not load API keys. The process binds to loopback only (`127.0.0.1` by default) and refuses any other host.
+
+```bash
+quanttrading paper --data data/btcusd_1h.csv --state state/paper.sqlite
+quanttrading status-ui --state state/paper.sqlite --host 127.0.0.1 --port 8787 --refresh-sec 10
+```
+
+Open http://127.0.0.1:8787 . The page polls `GET /api/status` every `--refresh-sec` seconds (allowed range 5–15).
+
+The page shows:
+
+- **Overview** — strategy id, mode (`paper` or `dry-run`), symbol, equity, cash, unrealized PnL, day PnL %, rolling PnL %, max drawdown %, halt (yes/no and reason)
+- **Position** — symbol, side, qty, average price, mark price, percent of equity
+- **Fills** — time, side, qty, price, `client_order_id`, and whether the risk gate rejected the order
+- **Market heartbeat** — last bar time and lag versus now. Lag is red when it is greater than twice the bar timeframe
+
+Figures come from the SQLite book (`meta`, `positions`, `fills`, `equity`). The server opens that file read-only and does not create it. Strategy id is taken from the latest `client_order_id` when it matches `{strategy}-{symbol}-{ts}-{intent}-{side}`. Mode defaults to `paper`. With one open position, mark price is the last marked close implied by equity and cash. Max drawdown uses the equity curve and the persisted peak. A missing database shows an error on the page and is picked up on a later refresh.
+
+Optional heartbeat JSON, for a paper or dry-run process that is keeping a live clock. The default path is the state file with a `.heartbeat.json` suffix (`state/paper.sqlite` → `state/paper.heartbeat.json`). Pass `--heartbeat` to use another file.
+
+```json
+{
+  "strategy_id": "sma_cross_v2",
+  "mode": "dry-run",
+  "symbol": "BTC/USD",
+  "timeframe": "1h",
+  "last_bar_ts": "2026-09-22T01:00:00Z"
+}
+```
+
+Only those fields are read. Any other key, including secrets, is ignored. Values in the heartbeat override the book for strategy, mode, and last bar time. `--timeframe` (for example `1h` or `15m`) sets the stale threshold. Without a heartbeat, the last equity timestamp is the bar time and the timeframe defaults to `1h`.
+
+`quanttrading status-ui --host 0.0.0.0` is rejected.
+
 ### Comparing `sma_cross_v2` and `mean_reversion_v1`
 
 Compare the two on the **same bars** using **fills** (`n_fills`), **drawdown** (`max_dd`), and **invalid or filtered signals** — not short-window Sharpe. The printed `sharpe` is not a ranking metric here: mean reversion uses a 10–20 bar lookback, and Sharpe on that horizon is noise.
@@ -131,7 +167,7 @@ Offline (the default) sizes market orders from the bar close, same quote→base 
 python -m pytest
 ```
 
-Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math, dry-run risk reject / size check (no network).
+Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math, dry-run risk reject / size check (no network), read-only status page.
 
 ## Layout
 
@@ -148,6 +184,8 @@ src/quanttrading/
   execution/risk.py    # per-trade / daily / total-DD kill-switch
   execution/live.py    # stub — raises, never sends orders
   backtest/runner.py   # bars → strategy → submit
+  status/snapshot.py   # read-only status from SQLite + optional heartbeat
+  status/server.py     # loopback status page
   cli.py
 ```
 
