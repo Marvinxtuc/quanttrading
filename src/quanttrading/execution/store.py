@@ -46,7 +46,8 @@ class SQLiteStore:
                 status TEXT NOT NULL,
                 reason TEXT,
                 order_type TEXT,
-                limit_price REAL
+                limit_price REAL,
+                exchange_order_id TEXT
             );
             CREATE TABLE IF NOT EXISTS equity (
                 ts TEXT PRIMARY KEY,
@@ -64,6 +65,8 @@ class SQLiteStore:
             self._conn.execute("ALTER TABLE fills ADD COLUMN order_type TEXT")
         if "limit_price" not in cols:
             self._conn.execute("ALTER TABLE fills ADD COLUMN limit_price REAL")
+        if "exchange_order_id" not in cols:
+            self._conn.execute("ALTER TABLE fills ADD COLUMN exchange_order_id TEXT")
 
     def get_meta(self, key: str) -> str | None:
         row = self._conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -155,13 +158,14 @@ class SQLiteStore:
         reason: str | None = None,
         order_type: str | None = None,
         limit_price: float | None = None,
+        exchange_order_id: str | None = None,
     ) -> None:
         self._conn.execute(
             """
             INSERT INTO fills(
                 client_order_id, ts, symbol, side, intent, qty_base, price, notional,
-                slippage_bps, status, reason, order_type, limit_price
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                slippage_bps, status, reason, order_type, limit_price, exchange_order_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 client_order_id,
@@ -177,8 +181,16 @@ class SQLiteStore:
                 reason,
                 order_type,
                 limit_price,
+                exchange_order_id,
             ),
         )
+
+    def latest_status(self, client_order_id: str) -> str | None:
+        row = self._conn.execute(
+            "SELECT status FROM fills WHERE client_order_id = ? ORDER BY id DESC LIMIT 1",
+            (client_order_id,),
+        ).fetchone()
+        return None if row is None else str(row["status"])
 
     def record_equity(self, ts: str, equity: float, cash: float) -> None:
         self._conn.execute(

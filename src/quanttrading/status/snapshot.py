@@ -1,4 +1,4 @@
-"""Read-only status snapshot from the paper SQLite book and an optional heartbeat."""
+"""Read-only status snapshot from a paper, dry-run, or live SQLite book."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ _SIDES = frozenset({"buy", "sell", "flat"})
 _INTENTS = frozenset({"open", "close", "reduce"})
 _TS_TOKEN = re.compile(r"\d{8}T\d{6}Z")
 _TIMEFRAME = re.compile(r"^(?P<n>\d+)(?P<u>[smhd])$", re.IGNORECASE)
-_MODES = frozenset({"paper", "dry-run"})
+_MODES = frozenset({"paper", "dry-run", "live"})
 _UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
 

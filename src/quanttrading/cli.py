@@ -9,7 +9,17 @@ import typer
 from quanttrading.backtest.runner import run_backtest, run_bars
 from quanttrading.config import Settings, load_settings
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
+from quanttrading.execution.credentials import KrakenCredentialsError, load_kraken_credentials
 from quanttrading.execution.dry_run import DryRunBroker, summarize_dry_run
+from quanttrading.execution.live import (
+    LIVE_PER_TRADE_DEFAULT,
+    LIVE_STRATEGY_ID,
+    LiveBroker,
+    assert_live_per_trade_pct,
+    kraken_trade_client,
+    run_live_latest,
+    summarize_live,
+)
 from quanttrading.execution.market_meta import CcxtPublicMarketMetadata, MarketMetadata, StaticMarketMetadata
 from quanttrading.execution.paper import PaperBroker
 from quanttrading.market import Bar
@@ -29,7 +39,10 @@ from quanttrading.strategy import (
 app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
-    help="Local crypto paper-trading MVP. dry-run reconciles signals without sending orders.",
+    help=(
+        "Local crypto trading MVP. paper and dry-run never send orders. "
+        "live sends Kraken orders for sma_cross_v2 only."
+    ),
 )
 
 
@@ -240,6 +253,151 @@ def dry_run(
 
 
 @app.command()
+def live(
+    data: Optional[Path] = typer.Option(
+        None,
+        help="OHLCV CSV. Required unless --fetch. The bundled sample is never traded.",
+    ),
+    fetch: bool = typer.Option(
+        False,
+        "--fetch",
+        help="Load public Kraken OHLCV, then send at most the latest bar.",
+    ),
+    state: Optional[Path] = typer.Option(None, help="SQLite live state. Default state/live.sqlite."),
+    symbol: Optional[str] = typer.Option(None),
+    timeframe: Optional[str] = typer.Option(None, help="Used by --fetch. Default from settings (1h)."),
+    limit: int = typer.Option(200, min=10, max=1000, help="Bars to load with --fetch."),
+    strategy: str = typer.Option(
+        LIVE_STRATEGY_ID,
+        help="sma_cross_v2 only. mean_reversion_v1 is refused.",
+    ),
+    per_trade_pct: float = typer.Option(
+        LIVE_PER_TRADE_DEFAULT,
+        help="Trial fraction of equity per open. Live allows 0.002–0.005 (0.2%–0.5%). Default 0.005.",
+    ),
+    exchange: Optional[str] = typer.Option(None, help="Must be kraken."),
+    fast: int = typer.Option(10, min=2, help="Fast SMA window."),
+    slow: int = typer.Option(30, min=3, help="Slow SMA window."),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window."),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open."),
+) -> None:
+    """Send Kraken market orders for sma_cross_v2. Requires KRAKEN_API_KEY and KRAKEN_API_SECRET.
+
+    Keys are read from the environment or .env (gitignored). Missing or placeholder
+    values refuse to start. The key must be trade-only: this client cannot withdraw.
+    Only the latest bar can send an order. Earlier bars warm the strategy and are
+    not replayed onto the account. Fills and rejects go to a separate live SQLite file.
+    """
+    if strategy != LIVE_STRATEGY_ID:
+        raise typer.BadParameter(f"live orders are enabled for {LIVE_STRATEGY_ID} only")
+    try:
+        assert_live_per_trade_pct(per_trade_pct)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    settings = load_settings()
+    venue = (exchange or settings.exchange_id).strip().lower()
+    if venue != "kraken":
+        raise typer.BadParameter("live orders are Kraken only")
+    if fetch and data is not None:
+        raise typer.BadParameter("pass either --data or --fetch, not both")
+    if not fetch and data is None:
+        raise typer.BadParameter(
+            "live requires --data or --fetch; it does not trade the bundled sample"
+        )
+    try:
+        api_key, api_secret = load_kraken_credentials()
+    except KrakenCredentialsError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    settings = settings.model_copy(update={"per_trade_pct": per_trade_pct})
+    bar_symbol = symbol or settings.default_symbol
+    bar_timeframe = timeframe or settings.default_timeframe
+    if fetch:
+        try:
+            bars = fetch_ohlcv(
+                exchange_id=venue,
+                symbol=bar_symbol,
+                timeframe=bar_timeframe,
+                limit=limit,
+            )
+        except RuntimeError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
+    else:
+        assert data is not None
+        if not data.exists():
+            raise typer.BadParameter(f"no data at {data}")
+        try:
+            bars = load_csv(data, default_symbol=bar_symbol)
+        except (OSError, ValueError, KeyError) as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
+    if not bars:
+        typer.echo("live requires at least one bar", err=True)
+        raise typer.Exit(code=1)
+    symbols = {bar.symbol for bar in bars}
+    if len(symbols) != 1:
+        raise typer.BadParameter("live requires a single symbol")
+    trading_symbol = bars[0].symbol
+
+    try:
+        market = CcxtPublicMarketMetadata(venue)
+        market.for_symbol(trading_symbol)
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    try:
+        client = kraken_trade_client(api_key, api_secret)
+        broker = LiveBroker(
+            settings,
+            store_path=state or settings.live_state_path,
+            enable_trading=True,
+            client=client,
+            market=market,
+            symbol=trading_symbol,
+        )
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    broker.store.set_meta("timeframe", bar_timeframe)
+    broker.store.commit()
+    chosen = _build_strategy(
+        settings,
+        strategy,
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        lookback=DEFAULT_LOOKBACK,
+        entry_z=DEFAULT_ENTRY_Z,
+        exit_z=DEFAULT_EXIT_Z,
+    )
+    try:
+        report = run_live_latest(bars, chosen, broker)
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    summary = summarize_live(
+        broker,
+        strategy_id=chosen.strategy_id,
+        n_bars=len(bars),
+        last_bar_ts=bars[-1].ts.isoformat().replace("+00:00", "Z"),
+        report=report,
+    )
+    store_path = state or settings.live_state_path
+    typer.echo(
+        f"live: {len(bars)} bars  strategy={chosen.strategy_id}  "
+        f"per_trade_pct={settings.per_trade_pct:g}  "
+        f"orders_sent={summary['orders_sent']}  state={store_path}"
+    )
+    _print_metrics(summary)
+    broker.store.close()
+
+
+@app.command()
 def backtest(
     data: Optional[Path] = typer.Option(None),
     symbol: Optional[str] = typer.Option(None),
@@ -275,7 +433,11 @@ def backtest(
 
 @app.command("status-ui")
 def status_ui(
-    state: Path = typer.Option(Path("state/paper.sqlite"), "--state", help="Paper or dry-run SQLite book."),
+    state: Path = typer.Option(
+        Path("state/paper.sqlite"),
+        "--state",
+        help="Paper, dry-run, or live SQLite book. Read-only.",
+    ),
     host: str = typer.Option("127.0.0.1", "--host", help="Loopback bind address. Non-loopback hosts are refused."),
     port: int = typer.Option(8787, "--port", min=1, max=65535),
     refresh_sec: int = typer.Option(10, "--refresh-sec", min=5, max=15, help="Browser refresh interval, 5–15 seconds."),
@@ -290,7 +452,7 @@ def status_ui(
         help="Bar size for the stale threshold (2×). Example: 1h, 15m. Default: heartbeat file, else 1h.",
     ),
 ) -> None:
-    """Serve a local read-only status page. Does not place orders or write state."""
+    """Serve a local read-only status page. Does not place orders, write state, or load API keys."""
     try:
         assert_loopback(host)
     except ValueError as exc:
