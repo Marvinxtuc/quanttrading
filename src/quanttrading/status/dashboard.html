@@ -174,10 +174,15 @@
       return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
     }
 
+    function pctDigits(value) {
+      const n = Math.abs(Number(value));
+      return n !== 0 && n < 0.01 ? 4 : 2;
+    }
+
     function signedPct(value) {
       if (value == null || Number.isNaN(Number(value))) return "—";
       const n = Number(value);
-      const body = Math.abs(n).toFixed(2) + "%";
+      const body = Math.abs(n).toFixed(pctDigits(n)) + "%";
       if (n > 0) return "+" + body;
       if (n < 0) return "-" + body;
       return body;
@@ -185,7 +190,8 @@
 
     function plainPct(value) {
       if (value == null || Number.isNaN(Number(value))) return "—";
-      return Number(value).toFixed(2) + "%";
+      const n = Number(value);
+      return n.toFixed(pctDigits(n)) + "%";
     }
 
     function lagText(sec) {
@@ -254,10 +260,11 @@
       }
       fills.forEach((row) => {
         const tr = document.createElement("tr");
+        const rejected = !!row.rejected_by_gate;
         addCell(tr, row.ts, "mono");
-        addCell(tr, row.side);
-        addCell(tr, qty(row.qty));
-        addCell(tr, price(row.price));
+        addCell(tr, rejected && row.side === "none" ? "—" : row.side);
+        addCell(tr, rejected && !row.qty ? "—" : qty(row.qty));
+        addCell(tr, rejected && !row.price ? "—" : price(row.price));
         addCell(tr, row.client_order_id, "mono");
         const gate = row.rejected_by_gate ? (row.reason ? "rejected · " + row.reason : "rejected") : "—";
         addCell(tr, gate, row.rejected_by_gate ? "bad" : "empty");
