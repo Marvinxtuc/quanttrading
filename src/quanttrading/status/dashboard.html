@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>quanttrading status</title>
+  <style>
+    :root {
+      --bg: #f3f0e8;
+      --card: #fffcf7;
+      --ink: #1c1915;
+      --muted: #6d675f;
+      --line: #e3ddd2;
+      --ok: #1d6b3a;
+      --bad: #a32020;
+      --warn: #8a5a12;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.4 ui-sans-serif, "Segoe UI", sans-serif;
+    }
+    header, main, footer { width: min(1100px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 28px 0 16px;
+    }
+    h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: -0.03em; }
+    h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .kicker { margin: 0 0 4px; color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+    .meta { text-align: right; color: var(--muted); font-size: 13px; }
+    .meta p { margin: 0; }
+    #error {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto 12px;
+      padding: 10px 12px;
+      background: #fde8e4;
+      color: var(--bad);
+      border: 1px solid #f0c2ba;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 1.35fr 0.85fr;
+      gap: 16px;
+      padding-bottom: 12px;
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 16px 18px 18px;
+    }
+    #fills-card { grid-column: 1 / -1; }
+    #heartbeat-card.stale { box-shadow: inset 4px 0 0 var(--bad); }
+    #heartbeat-card.live { box-shadow: inset 4px 0 0 var(--ok); }
+    dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; margin: 0; }
+    dt { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    dd { margin: 2px 0 0; font-size: 18px; font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    td.mono, dd.mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 13px; word-break: break-all; }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .warn { color: var(--warn); }
+    .empty { color: var(--muted); }
+    footer { color: var(--muted); font-size: 13px; padding: 8px 0 28px; }
+    @media (max-width: 800px) {
+      header { flex-direction: column; }
+      .meta { text-align: left; }
+      main, dl { grid-template-columns: 1fr; }
+      #fills-card { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <p class="kicker">quanttrading · local · read-only</p>
+      <h1>Status</h1>
+    </div>
+    <div class="meta">
+      <p>Refreshes every __REFRESH_SEC__s</p>
+      <p id="as-of">—</p>
+      <p id="state-path">—</p>
+    </div>
+  </header>
+  <p id="error" hidden></p>
+  <main>
+    <section id="overview-card">
+      <h2>Overview</h2>
+      <dl>
+        <div><dt>Strategy</dt><dd id="strategy-id">—</dd></div>
+        <div><dt>Mode</dt><dd id="mode">—</dd></div>
+        <div><dt>Symbol</dt><dd id="symbol">—</dd></div>
+        <div><dt>Equity</dt><dd id="equity">—</dd></div>
+        <div><dt>Cash</dt><dd id="cash">—</dd></div>
+        <div><dt>Unrealized PnL</dt><dd id="unrealized">—</dd></div>
+        <div><dt>Day PnL %</dt><dd id="day-pnl">—</dd></div>
+        <div><dt>Rolling PnL %</dt><dd id="rolling-pnl">—</dd></div>
+        <div><dt>Max DD %</dt><dd id="max-dd">—</dd></div>
+        <div><dt>Halted</dt><dd id="halted">—</dd></div>
+        <div><dt>Halt reason</dt><dd id="halt-reason">—</dd></div>
+        <div><dt>Daily breaker</dt><dd id="daily-breaker">—</dd></div>
+      </dl>
+    </section>
+    <section id="heartbeat-card">
+      <h2>Market heartbeat</h2>
+      <dl>
+        <div><dt>Last bar</dt><dd id="last-bar" class="mono">—</dd></div>
+        <div><dt>Lag vs now</dt><dd id="lag">—</dd></div>
+        <div><dt>Timeframe</dt><dd id="timeframe">—</dd></div>
+        <div><dt>Status</dt><dd id="heartbeat-state">—</dd></div>
+      </dl>
+      <p id="heartbeat-note" class="empty"></p>
+    </section>
+    <section id="position-card">
+      <h2>Position</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Qty</th>
+            <th>Avg price</th>
+            <th>Mark price</th>
+            <th>% of equity</th>
+          </tr>
+        </thead>
+        <tbody id="positions"></tbody>
+      </table>
+    </section>
+    <section id="fills-card">
+      <h2>Fills</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Side</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Client order id</th>
+            <th>Gate</th>
+          </tr>
+        </thead>
+        <tbody id="fills"></tbody>
+      </table>
+    </section>
+  </main>
+  <footer>Read-only. This page cannot place orders or change trading state. API keys are not loaded.</footer>
+  <noscript>JavaScript is required to refresh status from this machine.</noscript>
+  <script>
+    const REFRESH_SEC = __REFRESH_SEC__;
+
+    function text(value) {
+      return value == null || value === "" ? "—" : String(value);
+    }
+
+    function money(value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function qty(value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      return Number(value).toLocaleString(undefined, { maximumFractionDigits: 8 });
+    }
+
+    function price(value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    }
+
+    function signedPct(value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      const n = Number(value);
+      const body = Math.abs(n).toFixed(2) + "%";
+      if (n > 0) return "+" + body;
+      if (n < 0) return "-" + body;
+      return body;
+    }
+
+    function plainPct(value) {
+      if (value == null || Number.isNaN(Number(value))) return "—";
+      return Number(value).toFixed(2) + "%";
+    }
+
+    function lagText(sec) {
+      if (sec == null || Number.isNaN(Number(sec))) return "—";
+      const ahead = Number(sec) < 0;
+      let s = Math.abs(Math.round(Number(sec)));
+      const h = Math.floor(s / 3600);
+      s -= h * 3600;
+      const m = Math.floor(s / 60);
+      s -= m * 60;
+      const parts = [];
+      if (h) parts.push(h + "h");
+      if (m || h) parts.push(m + "m");
+      parts.push(s + "s");
+      return (ahead ? "ahead " : "") + parts.join(" ");
+    }
+
+    function set(id, value, className) {
+      const el = document.getElementById(id);
+      el.textContent = text(value);
+      el.className = className || "";
+    }
+
+    function clearTable(id, cols, message) {
+      const body = document.getElementById(id);
+      body.replaceChildren();
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = cols;
+      td.className = "empty";
+      td.textContent = message;
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+
+    function addCell(tr, value, className) {
+      const td = document.createElement("td");
+      td.textContent = text(value);
+      if (className) td.className = className;
+      tr.appendChild(td);
+    }
+
+    function renderPositions(data) {
+      const body = document.getElementById("positions");
+      body.replaceChildren();
+      const rows = data.positions && data.positions.length ? data.positions : [data.position];
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        addCell(tr, row.symbol);
+        addCell(tr, row.side, row.side === "flat" ? "empty" : "");
+        addCell(tr, qty(row.qty));
+        addCell(tr, price(row.avg_price));
+        addCell(tr, price(row.mark_price));
+        addCell(tr, plainPct(row.position_pct_equity));
+        body.appendChild(tr);
+      });
+    }
+
+    function renderFills(data) {
+      const body = document.getElementById("fills");
+      body.replaceChildren();
+      const fills = data.fills || [];
+      if (!fills.length) {
+        clearTable("fills", 6, "No fills.");
+        return;
+      }
+      fills.forEach((row) => {
+        const tr = document.createElement("tr");
+        addCell(tr, row.ts, "mono");
+        addCell(tr, row.side);
+        addCell(tr, qty(row.qty));
+        addCell(tr, price(row.price));
+        addCell(tr, row.client_order_id, "mono");
+        const gate = row.rejected_by_gate ? (row.reason ? "rejected · " + row.reason : "rejected") : "—";
+        addCell(tr, gate, row.rejected_by_gate ? "bad" : "empty");
+        body.appendChild(tr);
+      });
+    }
+
+    function render(data) {
+      const ov = data.overview || {};
+      const hb = data.heartbeat || {};
+      set("strategy-id", ov.strategy_id);
+      set("mode", ov.mode);
+      set("symbol", ov.symbol);
+      set("equity", money(ov.equity));
+      set("cash", money(ov.cash));
+      const pnlClass = ov.unrealized_pnl > 0 ? "ok" : ov.unrealized_pnl < 0 ? "bad" : "";
+      set("unrealized", money(ov.unrealized_pnl), pnlClass);
+      set("day-pnl", signedPct(ov.day_pnl_pct), ov.day_pnl_pct < 0 ? "bad" : ov.day_pnl_pct > 0 ? "ok" : "");
+      set("rolling-pnl", signedPct(ov.rolling_pnl_pct), ov.rolling_pnl_pct < 0 ? "bad" : ov.rolling_pnl_pct > 0 ? "ok" : "");
+      set("max-dd", plainPct(ov.max_dd_pct));
+      set("halted", ov.halted ? "yes" : "no", ov.halted ? "bad" : "ok");
+      set("halt-reason", ov.halt_reason, ov.halt_reason ? "bad" : "");
+      set("daily-breaker", ov.daily_breaker_active ? "active" : "off", ov.daily_breaker_active ? "warn" : "");
+      set("as-of", data.as_of, "mono");
+      set("state-path", data.state_path, "mono");
+      set("last-bar", hb.last_bar_ts, "mono");
+      set("lag", lagText(hb.lag_sec), hb.stale ? "bad" : "ok");
+      set("timeframe", hb.timeframe);
+      set("heartbeat-state", hb.stale ? "stale" : "live", hb.stale ? "bad" : "ok");
+      const card = document.getElementById("heartbeat-card");
+      card.classList.toggle("stale", !!hb.stale);
+      card.classList.toggle("live", !hb.stale);
+      const note = document.getElementById("heartbeat-note");
+      if (data.heartbeat_error) {
+        note.textContent = "Heartbeat file " + data.heartbeat_error + ". Using the SQLite book.";
+      } else if (hb.stale) {
+        note.textContent = "Red when lag is greater than " + (hb.stale_after_sec || "—") + "s (2× timeframe).";
+      } else {
+        note.textContent = "Within 2× the " + (hb.timeframe || "bar") + " timeframe.";
+      }
+      renderPositions(data);
+      renderFills(data);
+    }
+
+    async function tick() {
+      const banner = document.getElementById("error");
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          banner.hidden = false;
+          banner.textContent = data.error || ("status HTTP " + res.status);
+          return;
+        }
+        banner.hidden = true;
+        render(data);
+      } catch (err) {
+        banner.hidden = false;
+        banner.textContent = "Could not refresh status.";
+      }
+    }
+
+    tick();
+    setInterval(tick, REFRESH_SEC * 1000);
+  </script>
+</body>
+</html>

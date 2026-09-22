@@ -28,7 +28,7 @@ quanttrading = "quanttrading.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-quanttrading = ["samples/*.csv"]
+quanttrading = ["samples/*.csv", "status/dashboard.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
