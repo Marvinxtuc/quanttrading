@@ -44,7 +44,9 @@ class SQLiteStore:
                 notional REAL NOT NULL,
                 slippage_bps REAL NOT NULL,
                 status TEXT NOT NULL,
-                reason TEXT
+                reason TEXT,
+                order_type TEXT,
+                limit_price REAL
             );
             CREATE TABLE IF NOT EXISTS equity (
                 ts TEXT PRIMARY KEY,
@@ -53,7 +55,15 @@ class SQLiteStore:
             );
             """
         )
+        self._ensure_fill_columns()
         self._conn.commit()
+
+    def _ensure_fill_columns(self) -> None:
+        cols = {str(row[1]) for row in self._conn.execute("PRAGMA table_info(fills)")}
+        if "order_type" not in cols:
+            self._conn.execute("ALTER TABLE fills ADD COLUMN order_type TEXT")
+        if "limit_price" not in cols:
+            self._conn.execute("ALTER TABLE fills ADD COLUMN limit_price REAL")
 
     def get_meta(self, key: str) -> str | None:
         row = self._conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -127,6 +137,47 @@ class SQLiteStore:
             ) VALUES (?, ?, ?, 'none', 'open', 0, 0, 0, 0, 'rejected', ?)
             """,
             (client_order_id, ts, symbol, reason),
+        )
+
+    def record_event(
+        self,
+        *,
+        client_order_id: str,
+        ts: str,
+        symbol: str,
+        side: str,
+        intent: str,
+        qty_base: float,
+        price: float,
+        notional: float,
+        slippage_bps: float,
+        status: str,
+        reason: str | None = None,
+        order_type: str | None = None,
+        limit_price: float | None = None,
+    ) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO fills(
+                client_order_id, ts, symbol, side, intent, qty_base, price, notional,
+                slippage_bps, status, reason, order_type, limit_price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                client_order_id,
+                ts,
+                symbol,
+                side,
+                intent,
+                qty_base,
+                price,
+                notional,
+                slippage_bps,
+                status,
+                reason,
+                order_type,
+                limit_price,
+            ),
         )
 
     def record_equity(self, ts: str, equity: float, cash: float) -> None:

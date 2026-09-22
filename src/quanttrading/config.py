@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     total_dd_pct: float = Field(default=0.20, gt=0, le=1)
     max_slippage_bps: float = Field(default=5.0, ge=0)
     state_path: Path = Path("state/paper.sqlite")
+    dry_run_state_path: Path = Path("state/dry_run.sqlite")
 
     @property
     def per_trade_usdt(self) -> float:
