@@ -9,6 +9,8 @@ import typer
 from quanttrading.backtest.runner import run_backtest, run_bars
 from quanttrading.config import Settings, load_settings
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
+from quanttrading.execution.dry_run import DryRunBroker, summarize_dry_run
+from quanttrading.execution.market_meta import CcxtPublicMarketMetadata, MarketMetadata, StaticMarketMetadata
 from quanttrading.execution.paper import PaperBroker
 from quanttrading.market import Bar
 from quanttrading.strategy import (
@@ -22,7 +24,11 @@ from quanttrading.strategy import (
     build_strategy,
 )
 
-app = typer.Typer(no_args_is_help=True, add_completion=False, help="Local crypto paper-trading MVP.")
+app = typer.Typer(
+    no_args_is_help=True,
+    add_completion=False,
+    help="Local crypto paper-trading MVP. dry-run reconciles signals without sending orders.",
+)
 
 
 def _print_metrics(metrics: dict) -> None:
@@ -137,6 +143,98 @@ def paper(
     result = run_bars(bars, chosen, broker)
     typer.echo(f"paper loop: {len(bars)} bars  strategy={chosen.strategy_id}  state={store_path}")
     _print_metrics(result.metrics)
+
+
+def _market_metadata(public_markets: bool, exchange_id: str) -> MarketMetadata:
+    if not public_markets:
+        return StaticMarketMetadata()
+    return CcxtPublicMarketMetadata(exchange_id)
+
+
+@app.command("dry-run")
+def dry_run(
+    data: Optional[Path] = typer.Option(None, help="OHLCV CSV. Defaults to bundled sample."),
+    state: Optional[Path] = typer.Option(None, help="SQLite dry-run state. Default state/dry_run.sqlite."),
+    paper_state: Optional[Path] = typer.Option(
+        None,
+        "--paper-state",
+        help="Optional paper SQLite to compare client_order_id / side / intent.",
+    ),
+    symbol: Optional[str] = typer.Option(None),
+    strategy: str = typer.Option(
+        DEFAULT_STRATEGY_ID,
+        help="sma_cross_v2 (default) or mean_reversion_v1",
+    ),
+    per_trade_pct: float = typer.Option(
+        0.005,
+        min=1e-6,
+        max=1.0,
+        help="Trial fraction of equity per open. Default 0.5% (0.005), not the paper 1%.",
+    ),
+    public_markets: bool = typer.Option(
+        False,
+        "--public-markets",
+        help="Validate size with public ccxt min qty / tick / last. No API keys.",
+    ),
+    exchange: Optional[str] = typer.Option(
+        None,
+        help="ccxt id for --public-markets only. Public metadata; keys are refused.",
+    ),
+    fast: int = typer.Option(10, min=2, help="Fast SMA window (sma_cross_v2)."),
+    slow: int = typer.Option(30, min=3, help="Slow SMA window (sma_cross_v2)."),
+    vol_window: int = typer.Option(DEFAULT_VOL_WINDOW, min=2, help="Realized-vol window (sma_cross_v2)."),
+    min_vol: float = typer.Option(DEFAULT_MIN_VOL, min=0.0, help="Min realized vol to open (sma_cross_v2)."),
+    lookback: int = typer.Option(DEFAULT_LOOKBACK, min=2, help="Close lookback (mean_reversion_v1)."),
+    entry_z: float = typer.Option(DEFAULT_ENTRY_Z, help="Open when z <= -entry_z (mean_reversion_v1)."),
+    exit_z: float = typer.Option(DEFAULT_EXIT_Z, help="Flatten when z >= exit_z (mean_reversion_v1)."),
+) -> None:
+    """Replay signals through risk gates and record would-be orders. Sends nothing."""
+    bars, settings = _load_bars(data, symbol)
+    settings = settings.model_copy(update={"per_trade_pct": per_trade_pct})
+    store_path = state or settings.dry_run_state_path
+    if paper_state is not None and not paper_state.exists():
+        raise typer.BadParameter(f"paper state not found: {paper_state}")
+    try:
+        market = _market_metadata(public_markets, exchange or settings.exchange_id)
+    except (RuntimeError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    broker = DryRunBroker(settings, store_path=store_path, market=market)
+    if public_markets and bars:
+        try:
+            broker.market_constraints[bars[0].symbol] = market.for_symbol(bars[0].symbol)
+        except RuntimeError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1) from exc
+    chosen = _build_strategy(
+        settings,
+        strategy,
+        fast=fast,
+        slow=slow,
+        vol_window=vol_window,
+        min_vol=min_vol,
+        lookback=lookback,
+        entry_z=entry_z,
+        exit_z=exit_z,
+    )
+    run_bars(bars, chosen, broker)
+    try:
+        summary = summarize_dry_run(broker, paper_state=paper_state, strategy_id=chosen.strategy_id)
+    except (FileNotFoundError, RuntimeError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    reconcile = summary.get("paper_reconcile")
+    mismatch_note = ""
+    if isinstance(reconcile, dict):
+        mismatch_note = f"  paper_mismatches={reconcile['n_mismatches']}"
+    typer.echo(
+        f"dry-run: {len(bars)} bars  strategy={chosen.strategy_id}  "
+        f"per_trade_pct={settings.per_trade_pct:g}  "
+        f"signals={summary['n_signals']}  would_send={summary['n_would_send']}  "
+        f"risk_rejected={summary['n_risk_rejected']}  size_invalid={summary['n_size_invalid']}"
+        f"{mismatch_note}  orders_sent=0  state={store_path}"
+    )
+    _print_metrics(summary)
 
 
 @app.command()

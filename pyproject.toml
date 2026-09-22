@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quanttrading"
 version = "0.1.0"
-description = "Local crypto paper-trading MVP: market data → signals → paper/backtest execution → hard risk kill-switch."
+description = "Local crypto paper-trading MVP: market data → signals → paper/backtest/dry-run → hard risk kill-switch. Dry-run sends no orders."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

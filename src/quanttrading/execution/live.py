@@ -6,7 +6,11 @@ from quanttrading.signals import Signal
 
 
 class LiveBroker:
-    """Live execution is an interface stub only. No keys, no orders."""
+    """Live execution is an interface stub only. No keys, no orders.
+
+    ``submit`` always raises. There is no mode that places exchange orders.
+    Pre-live reconcile is ``DryRunBroker`` (public market metadata only).
+    """
 
     def submit(self, signal: Signal, bar: Bar | None = None) -> ExecutionReport:
         raise RuntimeError(

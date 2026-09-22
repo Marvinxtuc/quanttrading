@@ -2,7 +2,7 @@
 
 Local crypto **paper-trading** MVP: public market data → strategy signals → backtest or paper execution → hard risk kill-switch.
 
-This is **not** a broker platform. There is no dashboard, no multi-exchange router, and no live order placement. Live execution exists only as an interface stub. The paper path never loads API keys.
+This is **not** a broker platform. There is no dashboard, no multi-exchange router, and no live order placement. `LiveBroker` is a stub that raises: it never loads API keys and never sends orders. `quanttrading dry-run` is the pre-live check for `sma_cross_v2` — same risk gates and a would-be order record, still with no keys and no private exchange calls. The paper path never loads API keys.
 
 ## Baselines (locked in config)
 
@@ -106,13 +106,32 @@ The SMA min-vol filter is not applied. That filter skips quiet *trend* opens; th
 
 `--lookback`, `--entry-z`, and `--exit-z` apply to `mean_reversion_v1` only.
 
+## Dry-run (pre-live, no orders)
+
+`quanttrading dry-run` replays the same bars → strategy → `ExecutionBackend.submit` path as paper, then records the order that **would** be sent. It does not place exchange orders and does not read API keys. `LiveBroker.submit` still raises. There is no `--live` command.
+
+Default strategy is `sma_cross_v2`. `mean_reversion_v1` stays selectable. Trial size defaults to **0.5%** of equity (`--per-trade-pct 0.005`), not the paper 1%. Use `0.002`–`0.005` for a 0.2%–0.5% trial. Pass `--per-trade-pct 0.01` when you want the dry-run book to match a paper run that used the config default.
+
+```bash
+quanttrading dry-run
+quanttrading dry-run --strategy sma_cross_v2 --data data/btcusd_1h.csv \
+  --state state/dry_run.sqlite --per-trade-pct 0.005 \
+  --paper-state state/paper.sqlite
+```
+
+Use a **separate** `--state` file from paper (`state/dry_run.sqlite` by default). Statuses in that SQLite file are `dry_run_ok`, `rejected` (risk), or `size_invalid`. `orders_sent` in the summary is always 0.
+
+The printed summary includes signal count, would-send count, risk-rejected count, size-invalid count, a sample of would-be orders (`client_order_id`, symbol, side, qty, market/limit), and an equity-path snapshot (hypothetical local book only). `--paper-state` compares that file to the dry-run book and lists mismatches in `client_order_id`, side counts, and intent counts (would-send vs paper `filled`, plus risk-rejected ids). Limit orders the bar does not touch are stored as `unfilled` and are not would-send.
+
+Offline (the default) sizes market orders from the bar close, same quote→base math as paper, and does not dial the network. `--public-markets` loads **public** ccxt metadata only (Kraken `BTC/USD` unless `--exchange` is set): min qty, amount step, price tick, min cost, and last price. A non-empty API key is refused. Private endpoints are never called. The public last does not resize the order; when the venue also has a min cost, the bar-sized base qty must clear that min cost at the public last or the row is `size_invalid`.
+
 ## Tests
 
 ```bash
 python -m pytest
 ```
 
-Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math.
+Coverage: signal contract validation, `sma_cross_v2` and `mean_reversion_v1` → Signal → submit, risk halt / reject, paper fill math, dry-run risk reject / size check (no network).
 
 ## Layout
 
@@ -124,6 +143,8 @@ src/quanttrading/
   strategy/mean_reversion.py  # comparison: short-window mean reversion (`mean_reversion_v1`)
   execution/base.py    # shared ExecutionBackend protocol
   execution/paper.py   # sim fills, positions, equity, SQLite
+  execution/dry_run.py # would-be orders, same risk gates, no exchange IO
+  execution/market_meta.py  # public min qty / tick / last, or an offline stub
   execution/risk.py    # per-trade / daily / total-DD kill-switch
   execution/live.py    # stub — raises, never sends orders
   backtest/runner.py   # bars → strategy → submit
@@ -145,4 +166,4 @@ src/quanttrading/
 - Day P&L ≤ `-DAILY_DD_PCT` from day-start equity → reject further opens that UTC day (`daily_circuit_breaker`).
 - Drawdown from peak ≥ `TOTAL_DD_PCT` → sticky halt in SQLite (`max_drawdown`); new opens stay rejected after restart. Flatten/close is still allowed.
 
-Live trading is out of scope: `LiveBroker.submit` raises and does not accept keys.
+Live trading is out of scope: `LiveBroker.submit` raises and does not accept keys. Dry-run is the pre-live reconcile only; it cannot place orders either.
