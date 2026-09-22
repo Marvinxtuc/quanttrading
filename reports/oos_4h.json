@@ -1,0 +1,665 @@
+{
+  "span": {
+    "n_bars": 26810,
+    "start": "2013-10-06T20:00:00Z",
+    "end": "2026-06-30T20:00:00Z",
+    "days": 4650.0,
+    "years": 12.731
+  },
+  "settings": {
+    "paper_equity": 2000.0,
+    "per_trade_pct": 0.01,
+    "daily_dd_pct": 0.03,
+    "total_dd_pct": 0.2,
+    "max_slippage_bps": 5.0,
+    "holdout_frac": 0.2,
+    "test_frac": 0.15,
+    "min_train_frac": 0.35,
+    "costs": [
+      0.003,
+      0.006
+    ]
+  },
+  "caveats": [
+    "Live sma_cross_v2 is unchanged; this report is paper-only.",
+    "Round-trip cost is the strategy entry filter and a labeled fee estimate; the paper broker does not debit commissions from equity.",
+    "Buy-and-hold baseline sizes 1% of starting paper equity once at each fold's test open.",
+    "Cash baseline is flat (0 PnL)."
+  ],
+  "strategies": {
+    "trend_breakout_v1": {
+      "fold_windows": [
+        {
+          "fold_id": "wf_0",
+          "kind": "walk_forward",
+          "train_end_idx": 7506,
+          "test_start_idx": 7506,
+          "test_end_idx": 10723,
+          "test_start": "2017-09-06T16:00:00Z",
+          "test_end": "2019-02-26T08:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_1",
+          "kind": "walk_forward",
+          "train_end_idx": 10723,
+          "test_start_idx": 10723,
+          "test_end_idx": 13940,
+          "test_start": "2019-02-26T12:00:00Z",
+          "test_end": "2020-08-15T12:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_2",
+          "kind": "walk_forward",
+          "train_end_idx": 13940,
+          "test_start_idx": 13940,
+          "test_end_idx": 17157,
+          "test_start": "2020-08-15T16:00:00Z",
+          "test_end": "2022-02-02T16:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_3",
+          "kind": "walk_forward",
+          "train_end_idx": 17157,
+          "test_start_idx": 17157,
+          "test_end_idx": 21448,
+          "test_start": "2022-02-02T20:00:00Z",
+          "test_end": "2024-01-18T20:00:00Z",
+          "n_test_bars": 4291
+        },
+        {
+          "fold_id": "holdout",
+          "kind": "holdout",
+          "train_end_idx": 21448,
+          "test_start_idx": 21448,
+          "test_end_idx": 26810,
+          "test_start": "2024-01-19T00:00:00Z",
+          "test_end": "2026-06-30T20:00:00Z",
+          "n_test_bars": 5362
+        }
+      ],
+      "by_cost": {
+        "0.003": {
+          "round_trip_cost": 0.003,
+          "folds": [
+            {
+              "fold_id": "wf_0",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 15,
+              "profit_factor": 2.708743,
+              "max_dd": 0.001121,
+              "after_cost_ev_per_rt": 0.474504,
+              "fee_share_estimate": 0.071171,
+              "gross_profit": 12.717794,
+              "gross_loss": 4.695091,
+              "total_fee_estimate": 0.905138,
+              "sum_pnl": 8.022704,
+              "buy_hold_1pct_pnl": -3.837919,
+              "buy_hold_1pct_return_on_sleeve": -0.191896,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 30,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_1",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 22,
+              "profit_factor": 4.419777,
+              "max_dd": 0.001386,
+              "after_cost_ev_per_rt": 0.696143,
+              "fee_share_estimate": 0.062093,
+              "gross_profit": 21.520585,
+              "gross_loss": 4.869156,
+              "total_fee_estimate": 1.336287,
+              "sum_pnl": 16.651429,
+              "buy_hold_1pct_pnl": 42.605574,
+              "buy_hold_1pct_return_on_sleeve": 2.130279,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 44,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_2",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 27,
+              "profit_factor": 1.039651,
+              "max_dd": 0.003698,
+              "after_cost_ev_per_rt": -0.043546,
+              "fee_share_estimate": 0.133474,
+              "gross_profit": 12.332591,
+              "gross_loss": 11.862242,
+              "total_fee_estimate": 1.64608,
+              "sum_pnl": 0.470348,
+              "buy_hold_1pct_pnl": 43.410854,
+              "buy_hold_1pct_return_on_sleeve": 2.170543,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 54,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_3",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 13,
+              "profit_factor": 1.973129,
+              "max_dd": 0.001538,
+              "after_cost_ev_per_rt": 0.218077,
+              "fee_share_estimate": 0.107883,
+              "gross_profit": 7.357759,
+              "gross_loss": 3.72898,
+              "total_fee_estimate": 0.793775,
+              "sum_pnl": 3.628779,
+              "buy_hold_1pct_pnl": 1.94925,
+              "buy_hold_1pct_return_on_sleeve": 0.097463,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 26,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "holdout",
+              "kind": "holdout",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 29,
+              "profit_factor": 0.985256,
+              "max_dd": 0.001683,
+              "after_cost_ev_per_rt": -0.064883,
+              "fee_share_estimate": 0.242169,
+              "gross_profit": 7.317617,
+              "gross_loss": 7.427123,
+              "total_fee_estimate": 1.772098,
+              "sum_pnl": -0.109506,
+              "buy_hold_1pct_pnl": 8.368925,
+              "buy_hold_1pct_return_on_sleeve": 0.418446,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 58,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip."
+              ]
+            }
+          ],
+          "aggregate": {
+            "fold_count": 5,
+            "n_round_trips": 106,
+            "after_cost_ev_per_rt_trade_weighted": 0.209532,
+            "after_cost_ev_per_rt_fold_mean": 0.256059,
+            "profit_factor": 1.879726,
+            "max_dd_worst_fold": 0.003698,
+            "total_fee_estimate": 6.453378,
+            "fee_share_estimate": 0.105368,
+            "sum_pnl": 28.663754,
+            "buy_hold_1pct_pnl_sum": 92.496684,
+            "cash_baseline_pnl": 0.0
+          }
+        },
+        "0.006": {
+          "round_trip_cost": 0.006,
+          "folds": [
+            {
+              "fold_id": "wf_0",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 15,
+              "profit_factor": 2.708743,
+              "max_dd": 0.001121,
+              "after_cost_ev_per_rt": 0.414113,
+              "fee_share_estimate": 0.142342,
+              "gross_profit": 12.71631,
+              "gross_loss": 4.694543,
+              "total_fee_estimate": 1.810065,
+              "sum_pnl": 8.021767,
+              "buy_hold_1pct_pnl": -3.837919,
+              "buy_hold_1pct_return_on_sleeve": -0.191896,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 30,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_1",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 22,
+              "profit_factor": 4.419777,
+              "max_dd": 0.001386,
+              "after_cost_ev_per_rt": 0.635328,
+              "fee_share_estimate": 0.124187,
+              "gross_profit": 21.518073,
+              "gross_loss": 4.868588,
+              "total_fee_estimate": 2.672261,
+              "sum_pnl": 16.649485,
+              "buy_hold_1pct_pnl": 42.605574,
+              "buy_hold_1pct_return_on_sleeve": 2.130279,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 44,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_2",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 27,
+              "profit_factor": 1.039651,
+              "max_dd": 0.003698,
+              "after_cost_ev_per_rt": -0.104499,
+              "fee_share_estimate": 0.266948,
+              "gross_profit": 12.331151,
+              "gross_loss": 11.860858,
+              "total_fee_estimate": 3.291776,
+              "sum_pnl": 0.470294,
+              "buy_hold_1pct_pnl": 43.410854,
+              "buy_hold_1pct_return_on_sleeve": 2.170543,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 54,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "wf_3",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 13,
+              "profit_factor": 1.928161,
+              "max_dd": 0.001537,
+              "after_cost_ev_per_rt": 0.144091,
+              "fee_share_estimate": 0.220799,
+              "gross_profit": 7.188725,
+              "gross_loss": 3.728281,
+              "total_fee_estimate": 1.587265,
+              "sum_pnl": 3.460444,
+              "buy_hold_1pct_pnl": 1.94925,
+              "buy_hold_1pct_return_on_sleeve": 0.097463,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 26,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip."
+              ]
+            },
+            {
+              "fold_id": "holdout",
+              "kind": "holdout",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 29,
+              "profit_factor": 0.985256,
+              "max_dd": 0.001683,
+              "after_cost_ev_per_rt": -0.125965,
+              "fee_share_estimate": 0.484337,
+              "gross_profit": 7.316159,
+              "gross_loss": 7.425643,
+              "total_fee_estimate": 3.54349,
+              "sum_pnl": -0.109484,
+              "buy_hold_1pct_pnl": 8.368925,
+              "buy_hold_1pct_return_on_sleeve": 0.418446,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 58,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip."
+              ]
+            }
+          ],
+          "aggregate": {
+            "fold_count": 5,
+            "n_round_trips": 106,
+            "after_cost_ev_per_rt_trade_weighted": 0.147053,
+            "after_cost_ev_per_rt_fold_mean": 0.192614,
+            "profit_factor": 1.874596,
+            "max_dd_worst_fold": 0.003698,
+            "total_fee_estimate": 12.904857,
+            "fee_share_estimate": 0.211311,
+            "sum_pnl": 28.492506,
+            "buy_hold_1pct_pnl_sum": 92.496684,
+            "cash_baseline_pnl": 0.0
+          }
+        }
+      }
+    },
+    "range_reversion_v2": {
+      "fold_windows": [
+        {
+          "fold_id": "wf_0",
+          "kind": "walk_forward",
+          "train_end_idx": 7506,
+          "test_start_idx": 7506,
+          "test_end_idx": 10723,
+          "test_start": "2017-09-06T16:00:00Z",
+          "test_end": "2019-02-26T08:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_1",
+          "kind": "walk_forward",
+          "train_end_idx": 10723,
+          "test_start_idx": 10723,
+          "test_end_idx": 13940,
+          "test_start": "2019-02-26T12:00:00Z",
+          "test_end": "2020-08-15T12:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_2",
+          "kind": "walk_forward",
+          "train_end_idx": 13940,
+          "test_start_idx": 13940,
+          "test_end_idx": 17157,
+          "test_start": "2020-08-15T16:00:00Z",
+          "test_end": "2022-02-02T16:00:00Z",
+          "n_test_bars": 3217
+        },
+        {
+          "fold_id": "wf_3",
+          "kind": "walk_forward",
+          "train_end_idx": 17157,
+          "test_start_idx": 17157,
+          "test_end_idx": 21448,
+          "test_start": "2022-02-02T20:00:00Z",
+          "test_end": "2024-01-18T20:00:00Z",
+          "n_test_bars": 4291
+        },
+        {
+          "fold_id": "holdout",
+          "kind": "holdout",
+          "train_end_idx": 21448,
+          "test_start_idx": 21448,
+          "test_end_idx": 26810,
+          "test_start": "2024-01-19T00:00:00Z",
+          "test_end": "2026-06-30T20:00:00Z",
+          "n_test_bars": 5362
+        }
+      ],
+      "by_cost": {
+        "0.003": {
+          "round_trip_cost": 0.003,
+          "folds": [
+            {
+              "fold_id": "wf_0",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": -3.837919,
+              "buy_hold_1pct_return_on_sleeve": -0.191896,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_1",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 42.605574,
+              "buy_hold_1pct_return_on_sleeve": 2.130279,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_2",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 43.410854,
+              "buy_hold_1pct_return_on_sleeve": 2.170543,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_3",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 1.94925,
+              "buy_hold_1pct_return_on_sleeve": 0.097463,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "holdout",
+              "kind": "holdout",
+              "round_trip_cost": 0.003,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 8.368925,
+              "buy_hold_1pct_return_on_sleeve": 0.418446,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.003 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            }
+          ],
+          "aggregate": {
+            "fold_count": 5,
+            "n_round_trips": 0,
+            "after_cost_ev_per_rt_trade_weighted": null,
+            "after_cost_ev_per_rt_fold_mean": null,
+            "profit_factor": 0.0,
+            "max_dd_worst_fold": 0.0,
+            "total_fee_estimate": 0,
+            "fee_share_estimate": null,
+            "sum_pnl": 0,
+            "buy_hold_1pct_pnl_sum": 92.496684,
+            "cash_baseline_pnl": 0.0
+          }
+        },
+        "0.006": {
+          "round_trip_cost": 0.006,
+          "folds": [
+            {
+              "fold_id": "wf_0",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": -3.837919,
+              "buy_hold_1pct_return_on_sleeve": -0.191896,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_1",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 42.605574,
+              "buy_hold_1pct_return_on_sleeve": 2.130279,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_2",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 43.410854,
+              "buy_hold_1pct_return_on_sleeve": 2.170543,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "wf_3",
+              "kind": "walk_forward",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 1.94925,
+              "buy_hold_1pct_return_on_sleeve": 0.097463,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            },
+            {
+              "fold_id": "holdout",
+              "kind": "holdout",
+              "round_trip_cost": 0.006,
+              "n_round_trips": 0,
+              "profit_factor": 0.0,
+              "max_dd": 0.0,
+              "after_cost_ev_per_rt": null,
+              "fee_share_estimate": null,
+              "gross_profit": 0,
+              "gross_loss": 0,
+              "total_fee_estimate": 0,
+              "sum_pnl": 0,
+              "buy_hold_1pct_pnl": 8.368925,
+              "buy_hold_1pct_return_on_sleeve": 0.418446,
+              "cash_baseline_pnl": 0.0,
+              "n_fills_in_window": 0,
+              "notes": [
+                "Paper equity path applies slippage only; fees are not deducted from cash.",
+                "Fee-adjusted EV uses labeled estimate: pnl_i - (0.006 * entry_notional_i) per completed round trip.",
+                "No completed round trips with exit in this test window."
+              ]
+            }
+          ],
+          "aggregate": {
+            "fold_count": 5,
+            "n_round_trips": 0,
+            "after_cost_ev_per_rt_trade_weighted": null,
+            "after_cost_ev_per_rt_fold_mean": null,
+            "profit_factor": 0.0,
+            "max_dd_worst_fold": 0.0,
+            "total_fee_estimate": 0,
+            "fee_share_estimate": null,
+            "sum_pnl": 0,
+            "buy_hold_1pct_pnl_sum": 92.496684,
+            "cash_baseline_pnl": 0.0
+          }
+        }
+      }
+    }
+  }
+}

@@ -101,7 +101,26 @@ After the exit **fill**, the next 3 closed bars cannot form a new entry. The ear
 
 ## Kraken 720-bar limit
 
-Kraken's public OHLC endpoint returns at most 720 candles per request. `quanttrading fetch --limit` larger than 720 is truncated. 720 bars of 4h is about 120 days, which covers the 200-bar EMA warm-up. A longer replay needs a CSV you already fetched or saved.
+Kraken's public OHLC endpoint returns at most 720 candles per request. `quanttrading fetch --limit` larger than 720 is truncated. 720 bars of 4h is about 120 days, which covers the 200-bar EMA warm-up.
+
+### Multi-year history (official OHLCVT)
+
+For multi-year paper / OOS, use Kraken's downloadable OHLCVT archive (preferred over stitching REST OHLC):
+
+```bash
+quanttrading fetch-history --out data/btcusd_4h_long.csv
+quanttrading paper --strategy trend_breakout_v1 --data data/btcusd_4h_long.csv --state state/paper_trend.sqlite
+```
+
+`fetch-history` pulls the official full-history ZIP parts when needed, extracts `XBTUSD_240.csv` (or a finer `XBTUSD_*` file and resamples to 4h UTC), and writes the same CSV schema as `paper --data`. If the file spans less than ~3 years, the CLI prints the exact span; do not invent bars.
+
+## Rolling out-of-sample report
+
+```bash
+quanttrading oos-report --data data/btcusd_4h_long.csv --out reports/oos_4h.md --json-out reports/oos_4h.json
+```
+
+Expanding walk-forward folds on the research window, plus a final untouched holdout. Scores `trend_breakout_v1` and `range_reversion_v2` **separately** with paper next-bar open fills and 1% / 3% / 20% gates. Cost stress: baseline round-trip `0.003` and worse `0.006` (entry filter; fee-adjusted EV is a labeled estimate because the paper broker does not debit commissions). Metrics: fold count, after-cost EV per round trip, profit factor, max drawdown, full round-trip count, fee share estimate, buy-and-hold 1% sleeve, cash baseline. Live `sma_cross_v2` is unchanged.
 
 ## Run paper on 4h data
 
@@ -211,7 +230,7 @@ After the exit **fill**, the next 6 closed bars cannot form a new entry.
 
 ## Kraken 720-bar limit
 
-Same as trend: public OHLC caps at 720 bars (~120 days of 4h), which covers the 200-bar EMA warm-up. Longer history is out of scope here.
+Same as trend: public OHLC caps at 720 bars (~120 days of 4h), which covers the 200-bar EMA warm-up. For multi-year OOS use `quanttrading fetch-history` (official OHLCVT → paper 4h CSV) and `quanttrading oos-report` as documented under `trend_breakout_v1`.
 
 ## Run paper on 4h data
 

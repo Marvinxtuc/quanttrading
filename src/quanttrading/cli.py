@@ -8,7 +8,17 @@ import typer
 
 from quanttrading.backtest.runner import run_backtest, run_bars
 from quanttrading.config import Settings, load_settings
+from quanttrading.data.kraken_history import fetch_kraken_btcusd_4h
 from quanttrading.data.ohlcv import bundled_sample_path, fetch_ohlcv, generate_sample_bars, load_csv, save_csv
+from quanttrading.oos.report import (
+    DEFAULT_COST_STRESS,
+    DEFAULT_HOLDOUT_FRAC,
+    DEFAULT_MIN_TRAIN_FRAC,
+    DEFAULT_TEST_FRAC,
+    OOS_STRATEGY_IDS,
+    render_oos_markdown,
+    run_oos_report,
+)
 from quanttrading.execution.credentials import KrakenCredentialsError, load_kraken_credentials
 from quanttrading.execution.dry_run import DryRunBroker, summarize_dry_run
 from quanttrading.execution.live import (
@@ -162,6 +172,145 @@ def sample_data(
     bars = generate_sample_bars(symbol=symbol, n=n)
     save_csv(bars, out)
     typer.echo(f"wrote {len(bars)} synthetic bars → {out}")
+
+
+@app.command("fetch-history")
+def fetch_history(
+    out: Path = typer.Option(
+        Path("data/btcusd_4h_long.csv"),
+        help="Paper-compatible 4h CSV (timestamp,symbol,open,high,low,close,volume).",
+    ),
+    work_dir: Path = typer.Option(
+        Path("data/kraken_ohlcvt"),
+        help="Scratch dir for ZIP parts / extracted Kraken CSVs.",
+    ),
+    source: Optional[Path] = typer.Option(
+        None,
+        help="Local Kraken OHLCVT CSV (e.g. XBTUSD_240.csv). Skips download when set.",
+    ),
+    verify_checksum: bool = typer.Option(
+        True,
+        "--verify-checksum/--no-verify-checksum",
+        help="Verify reassembled full-history ZIP against Kraken's published sha256.",
+    ),
+    keep_zip: bool = typer.Option(
+        False,
+        "--keep-zip",
+        help="Keep downloaded ZIP parts after extracting XBTUSD candles.",
+    ),
+) -> None:
+    """Build multi-year Kraken BTC/USD 4h CSV from official OHLCVT downloads.
+
+    Public REST OHLC is capped at ~720 bars. This command prefers Kraken's
+    downloadable OHLCVT archive (XBTUSD_240, or finer intervals resampled to
+    4h UTC). Output works with ``quanttrading paper --data`` and ``oos-report``.
+    Does not change live trading.
+    """
+    try:
+        span = fetch_kraken_btcusd_4h(
+            out=out,
+            work_dir=work_dir,
+            verify_checksum=verify_checksum,
+            keep_zip=keep_zip,
+            source_csv=source,
+        )
+    except (OSError, ValueError, RuntimeError, FileNotFoundError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    years = span.years
+    caveat = ""
+    if years < 3.0:
+        caveat = (
+            f"  CAUTION: span is {years:.2f} years (< ~3y target); "
+            "still usable for OOS with that caveat."
+        )
+    typer.echo(
+        f"wrote {span.n_bars} 4h bars → {out}  "
+        f"{span.start.isoformat().replace('+00:00', 'Z')} .. "
+        f"{span.end.isoformat().replace('+00:00', 'Z')}  "
+        f"({span.days:.1f} days, {years:.2f} years){caveat}"
+    )
+
+
+@app.command("oos-report")
+def oos_report(
+    data: Path = typer.Option(
+        ...,
+        "--data",
+        help="Long 4h paper CSV (from fetch-history or an equivalent file).",
+    ),
+    out: Path = typer.Option(
+        Path("reports/oos_4h.md"),
+        help="Markdown report path.",
+    ),
+    json_out: Optional[Path] = typer.Option(
+        None,
+        "--json-out",
+        help="Optional machine-readable JSON alongside the markdown.",
+    ),
+    symbol: Optional[str] = typer.Option(None),
+    holdout_frac: float = typer.Option(
+        DEFAULT_HOLDOUT_FRAC,
+        min=0.05,
+        max=0.4,
+        help="Final untouched fraction of the series (holdout fold).",
+    ),
+    test_frac: float = typer.Option(
+        DEFAULT_TEST_FRAC,
+        min=0.05,
+        max=0.4,
+        help="Test window size as a fraction of the research (non-holdout) span.",
+    ),
+    min_train_frac: float = typer.Option(
+        DEFAULT_MIN_TRAIN_FRAC,
+        min=0.2,
+        max=0.8,
+        help="Minimum expanding-train fraction of the research span.",
+    ),
+) -> None:
+    """Rolling train/test OOS for trend_breakout_v1 and range_reversion_v2.
+
+    Each strategy is scored separately on each test fold with paper-style
+    next-bar open fills and the usual 1%/3%/20% gates. Cost stress uses
+    round-trip 0.003 and 0.006 (entry filter + labeled fee-adjusted EV).
+    Live sma_cross_v2 is not touched.
+    """
+    if not data.exists():
+        raise typer.BadParameter(
+            f"no data at {data}; run: quanttrading fetch-history --out {data}"
+        )
+    settings = load_settings()
+    try:
+        bars = load_csv(data, default_symbol=symbol or settings.default_symbol)
+    except (OSError, ValueError, KeyError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    report = run_oos_report(
+        bars,
+        strategy_ids=OOS_STRATEGY_IDS,
+        costs=DEFAULT_COST_STRESS,
+        settings=settings,
+        holdout_frac=holdout_frac,
+        test_frac=test_frac,
+        min_train_frac=min_train_frac,
+    )
+    markdown = render_oos_markdown(report)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(markdown, encoding="utf-8")
+    if json_out is not None:
+        json_out.parent.mkdir(parents=True, exist_ok=True)
+        json_out.write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+    span = report["span"]
+    typer.echo(
+        f"oos-report: {span['n_bars']} bars  span={span['years']}y  "
+        f"strategies={','.join(OOS_STRATEGY_IDS)}  → {out}"
+    )
+    if span["years"] < 3.0:
+        typer.echo(
+            f"CAUTION: obtained span is {span['years']} years "
+            f"({span['days']} days), below ~3 years.",
+            err=True,
+        )
 
 
 @app.command()

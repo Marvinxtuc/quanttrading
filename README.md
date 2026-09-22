@@ -44,9 +44,24 @@ Public OHLCV only (no keys):
 quanttrading fetch --symbol BTC/USD --timeframe 1h --out data/btcusd_1h.csv
 ```
 
-Kraken's public OHLC call returns at most **720** bars. `quanttrading fetch --limit` above 720 is truncated by Kraken. At 4h, 720 bars is about 120 days. Longer paper history has to be a CSV you already have.
+Kraken's public OHLC call returns at most **720** bars. `quanttrading fetch --limit` above 720 is truncated by Kraken. At 4h, 720 bars is about 120 days.
 
-Default venue is Kraken (`BTC/USD`). Override `--exchange` / `--symbol` if needed, or generate bars offline:
+### Multi-year 4h history (official Kraken OHLCVT)
+
+For paper-only `trend_breakout_v1` / `range_reversion_v2` OOS you need years of 4h bars. Prefer Kraken's [downloadable OHLCVT archives](https://support.kraken.com/articles/360047124832-downloadable-historical-ohlcvt-open-high-low-close-volume-trades-data) (not the 720-bar REST window):
+
+```bash
+# Downloads official full-history ZIP parts, extracts XBTUSD_240 (or finer → resample 4h UTC),
+# writes a paper-compatible CSV.
+quanttrading fetch-history --out data/btcusd_4h_long.csv
+
+# Or convert a local Kraken file you already unzipped (XBTUSD_240.csv / _60.csv / …):
+quanttrading fetch-history --source path/to/XBTUSD_240.csv --out data/btcusd_4h_long.csv
+```
+
+Output columns match `quanttrading paper --data`: `timestamp,symbol,open,high,low,close,volume`. If the obtained span is under ~3 years, the command prints the exact span and still writes what it has.
+
+Default venue for short `fetch` is Kraken (`BTC/USD`). Override `--exchange` / `--symbol` if needed, or generate bars offline:
 
 ```bash
 quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 1h --out data/btcusd_1h.csv
@@ -76,7 +91,13 @@ quanttrading paper --strategy sma_cross_5m_v1 --data data/btcusd_5m.csv --state 
 quanttrading fetch --exchange kraken --symbol BTC/USD --timeframe 4h --limit 720 --out data/btcusd_4h.csv
 quanttrading paper --strategy trend_breakout_v1 --data data/btcusd_4h.csv --state state/paper_trend.sqlite
 quanttrading paper --strategy range_reversion_v2 --data data/btcusd_4h.csv --state state/paper_range.sqlite
+
+# Long history + rolling OOS (paper only; live sma_cross_v2 unchanged)
+quanttrading fetch-history --out data/btcusd_4h_long.csv
+quanttrading oos-report --data data/btcusd_4h_long.csv --out reports/oos_4h.md --json-out reports/oos_4h.json
 ```
+
+`oos-report` runs expanding walk-forward folds (plus a final untouched holdout) for **`trend_breakout_v1` and `range_reversion_v2` separately**, with next-bar open fills, the 1% / 3% / 20% gates, and cost stress at round-trip **0.003** and **0.006**. Paper equity still uses slippage only; fee-adjusted EV / fee-share are labeled estimates. Buy-and-hold (1% equity sleeve once per fold) and cash (0) baselines are included. See [STRATEGY.md](STRATEGY.md) and `reports/oos_4h.md`.
 
 Same pipeline as a historical backtest (in-memory store):
 
@@ -275,6 +296,7 @@ Coverage: signal contract validation, `sma_cross_v2`, `sma_cross_15m_v1`, `sma_c
 src/quanttrading/
   signals.py           # Signal contract v0.1 (pydantic, JSON-serializable)
   data/ohlcv.py        # ccxt public fetch, CSV, synthetic sample
+  data/kraken_history.py # official OHLCVT download / convert → multi-year 4h CSV
   strategy/sma.py      # SMA crossover + min-vol filter (`sma_cross_v2`, `sma_cross_15m_v1`, `sma_cross_5m_v1`)
   strategy/mean_reversion.py  # comparison: short-window mean reversion (`mean_reversion_v1`)
   strategy/trend_breakout.py  # paper-only 4h breakout (`trend_breakout_v1`)
@@ -288,6 +310,7 @@ src/quanttrading/
   execution/live.py    # Kraken orders for sma_cross_v2; armed only by `quanttrading live`
   execution/credentials.py  # KRAKEN_API_KEY / KRAKEN_API_SECRET, placeholder refusal
   backtest/runner.py   # bars → strategy → submit
+  oos/report.py        # rolling OOS for 4h paper strategies
   status/snapshot.py   # read-only status from SQLite + optional heartbeat
   status/server.py     # loopback status page
   cli.py
