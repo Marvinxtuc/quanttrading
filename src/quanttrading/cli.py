@@ -717,9 +717,22 @@ def status_ui(
         raise typer.Exit(code=1) from exc
 
 
+@app.command("paper-basket")
+def paper_basket(
+    once: bool = typer.Option(True, "--once/--no-once", help="Run one idempotent daily step (only mode)."),
+    state_dir: Path = typer.Option(Path("state"), help="Directory for paper_sma_basket.sqlite / .log"),
+) -> None:
+    """Paper-only ma_ensemble_v1 (SMA150/200/250 sleeves) daily step. Never sends orders."""
+    from quanttrading.ensemble.ma_ensemble import format_summary, run_once
+
+    summary = run_once(state_dir)
+    typer.echo(format_summary(summary))
+
+
 def main() -> None:
     app()
 
 
 if __name__ == "__main__":
     main()
+
