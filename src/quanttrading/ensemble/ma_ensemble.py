@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
+from .live_prereqs import CostGuard, realized_cost_bps
+
 STRATEGY_ID = "ma_ensemble_v1"
 SLEEVES = (("A", 150), ("B", 200), ("C", 250))
 START_CAPITAL = 200.0
@@ -104,6 +106,13 @@ class Ledger:
     def set_meta(self, k: str, v: str) -> None:
         self.db.execute("INSERT OR REPLACE INTO meta VALUES (?,?)", (k, v))
 
+    def cost_guard(self) -> CostGuard:
+        r = self.db.execute("SELECT v FROM meta WHERE k='cost_guard'").fetchone()
+        return CostGuard.from_dict(json.loads(r[0])) if r else CostGuard()
+
+    def save_cost_guard(self, g: CostGuard) -> None:
+        self.set_meta("cost_guard", json.dumps(g.to_dict()))
+
     def done(self, day: str) -> dict | None:
         r = self.db.execute("SELECT summary FROM runs WHERE signal_day=?", (day,)).fetchone()
         return json.loads(r[0]) if r else None
@@ -145,6 +154,8 @@ def run_step(
     fill_px = exec_bar.open if exec_bar else signal_bar.close  # next daily open (≈ price just after 00:00 UTC)
     sleeves = ledger.sleeves()
     halted = ledger.meta("halted") == "1"
+    guard = ledger.cost_guard()
+    cost_paused = guard.paused
     trades: list[dict] = []
     notes: list[str] = []
     ts = now.isoformat()
@@ -167,7 +178,10 @@ def run_step(
             "INSERT INTO fills (signal_day, sleeve, side, qty_btc, price, fee, fill_type, reason, ts) VALUES (?,?,?,?,?,?,?,?,?)",
             (signal_bar.day, name, side, qty, px, fee, ftype, reason, ts),
         )
-        trades.append({"sleeve": name, "side": side, "qty_btc": round(qty, 8), "price": round(px, 2),
+        cost = realized_cost_bps(side, qty, px, fee, fill_px)
+        if guard.record(cost):
+            notes.append(f"COST GUARD: {guard.consecutive} consecutive fills > {guard.limit_bps:.0f} bps; strategy paused, manual review")
+        trades.append({"cost_bps": round(cost, 2), "sleeve": name, "side": side, "qty_btc": round(qty, 8), "price": round(px, 2),
                        "fee": round(fee, 4), "fill_type": ftype, "reason": reason})
 
     # Pre-trade drawdown check at the execution price.
@@ -178,6 +192,9 @@ def run_step(
         notes.append(f"HARD STOP: portfolio DD {1 - equity_pre / peak:.1%} > {MAX_PORTFOLIO_DD:.0%}; all to cash, manual review")
         ledger.set_meta("halted", "1")
 
+    if cost_paused and not halted:
+        notes.append("cost guard paused: no new orders until manual review (positions held)")
+
     sleeve_rows = {}
     first_run = ledger.db.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 0
     for name, n in SLEEVES:
@@ -185,6 +202,8 @@ def run_step(
         sv = sma(closes, n)
         tgt = 0 if halted else target_position(signal_bar.close, sv)
         cur = 1 if s["btc"] * fill_px > s["cash"] else 0
+        if cost_paused and not halted:
+            tgt = cur  # paused: hold, do not trade
         if tgt != cur or (tgt == 0 and s["btc"] > 0 and halted):
             reason = "halt" if halted else ("initial_entry" if first_run else "signal_change")
             if tgt == 1:
@@ -199,6 +218,7 @@ def run_step(
     equity = sum(r["equity"] for r in sleeve_rows.values())
     peak = max(peak, equity)
     ledger.set_meta("peak_equity", str(peak))
+    ledger.save_cost_guard(guard)
 
     # Reconciliation: stored state vs replay of fills, and position vs target.
     replay = ledger.replay_positions()
@@ -215,7 +235,8 @@ def run_step(
         "strategy_id": STRATEGY_ID, "mode": "paper", "run_ts": ts, "signal_day": signal_bar.day,
         "signal_close": signal_bar.close, "exec_day": today, "exec_price": fill_px,
         "sleeves": sleeve_rows, "total_equity": round(equity, 4), "peak_equity": round(peak, 4),
-        "drawdown": round(1 - equity / peak, 4), "halted": halted, "trades_today": trades,
+        "drawdown": round(1 - equity / peak, 4), "halted": halted,
+        "cost_guard": {"paused": guard.paused, "consecutive_breaches": guard.consecutive, "limit_bps": guard.limit_bps}, "trades_today": trades,
         "notes": notes, "reconciliation": {"mismatches": len(mismatches), "details": mismatches},
         "orders_sent": 0, "already_processed": False,
     }
