@@ -114,7 +114,11 @@ class Ledger:
             self.db.commit()
 
     def sleeves(self) -> dict[str, dict]:
-        return {r[0]: {"sma_n": r[1], "cash": r[2], "btc": r[3]} for r in self.db.execute("SELECT * FROM sleeves")}
+        # DB column is still named `btc` (legacy); it holds the base-asset quantity for any pair.
+        cols = [c[1] for c in self.db.execute("PRAGMA table_info(sleeves)")]
+        qcol = "qty" if "qty" in cols else "btc"
+        return {r[0]: {"sma_n": r[1], "cash": r[2], "qty": r[3]}
+                for r in self.db.execute(f"SELECT name, sma_n, cash, {qcol} FROM sleeves")}
 
     def meta(self, k: str) -> str:
         return self.db.execute("SELECT v FROM meta WHERE k=?", (k,)).fetchone()[0]
@@ -165,7 +169,9 @@ def run_step(
     exec_bar = next((b for b in bars if b.day == today), None)
     prior = ledger.done(signal_bar.day)
     if prior is not None:
-        prior = dict(prior, already_processed=True, trades_today=[], run_ts=now.isoformat())
+        prior = normalize_summary(prior)
+        prior = dict(prior, already_processed=True, trades_recorded_earlier=prior.get("trades_today", []),
+                     trades_today=[], run_ts=now.isoformat(), recorded_run_ts=prior.get("run_ts"))
         return prior
 
     closes = [b.close for b in completed]
@@ -188,10 +194,10 @@ def run_step(
         fee = qty * px * COST_PER_SIDE
         if side == "buy":
             s["cash"] -= qty * px + fee
-            s["btc"] += qty
+            s["qty"] += qty
         else:
             s["cash"] += qty * px - fee
-            s["btc"] -= qty
+            s["qty"] -= qty
         ledger.db.execute(
             "INSERT INTO fills (signal_day, sleeve, side, qty_btc, price, fee, fill_type, reason, ts) VALUES (?,?,?,?,?,?,?,?,?)",
             (signal_bar.day, name, side, qty, px, fee, ftype, reason, ts),
@@ -199,11 +205,11 @@ def run_step(
         cost = realized_cost_bps(side, qty, px, fee, fill_px)
         if guard.record(cost):
             notes.append(f"COST GUARD: {guard.consecutive} consecutive fills > {guard.limit_bps:.0f} bps; strategy paused, manual review")
-        trades.append({"cost_bps": round(cost, 2), "sleeve": name, "side": side, "qty_btc": round(qty, 8), "price": round(px, 2),
+        trades.append({"cost_bps": round(cost, 2), "sleeve": name, "side": side, "asset": asset, "qty": round(qty, 8), **({"qty_btc": round(qty, 8)} if asset == "BTC" else {}), "price": round(px, 2),
                        "fee": round(fee, 4), "fill_type": ftype, "reason": reason})
 
     # Pre-trade drawdown check at the execution price.
-    equity_pre = sum(s["cash"] + s["btc"] * fill_px for s in sleeves.values())
+    equity_pre = sum(s["cash"] + s["qty"] * fill_px for s in sleeves.values())
     peak = max(float(ledger.meta("peak_equity")), equity_pre)
     if not halted and equity_pre < peak * (1 - MAX_PORTFOLIO_DD):
         halted = True
@@ -219,19 +225,20 @@ def run_step(
         s = sleeves[name]
         sv = sma(closes, n)
         tgt = 0 if halted else target_position(signal_bar.close, sv)
-        cur = 1 if s["btc"] * fill_px > s["cash"] else 0
+        cur = 1 if s["qty"] * fill_px > s["cash"] else 0
         if cost_paused and not halted:
             tgt = cur  # paused: hold, do not trade
-        if tgt != cur or (tgt == 0 and s["btc"] > 0 and halted):
+        if tgt != cur or (tgt == 0 and s["qty"] > 0 and halted):
             reason = "halt" if halted else ("initial_entry" if first_run else "signal_change")
             if tgt == 1:
                 trade(name, "buy", s["cash"] / (fill_px * (1 + SLIPPAGE) * (1 + COST_PER_SIDE)), reason)
             else:
-                trade(name, "sell", s["btc"], reason)
+                trade(name, "sell", s["qty"], reason)
         sleeve_rows[name] = {"sma_n": n, "sma": round(sv, 2) if sv else None, "signal": "LONG" if tgt else "CASH",
-                             "target": tgt, "btc": round(s["btc"], 8), "cash": round(s["cash"], 4),
-                             "equity": round(s["cash"] + s["btc"] * fill_px, 4)}
-        ledger.db.execute("UPDATE sleeves SET cash=?, btc=? WHERE name=?", (s["cash"], s["btc"], name))
+                             "target": tgt, "asset": asset, "qty": round(s["qty"], 8),
+                             **({"btc": round(s["qty"], 8)} if asset == "BTC" else {}), "cash": round(s["cash"], 4),
+                             "equity": round(s["cash"] + s["qty"] * fill_px, 4)}
+        ledger.db.execute("UPDATE sleeves SET cash=?, btc=? WHERE name=?", (s["cash"], s["qty"], name))
 
     equity = sum(r["equity"] for r in sleeve_rows.values())
     peak = max(peak, equity)
@@ -243,9 +250,9 @@ def run_step(
     mismatches = []
     for name, (c, b) in replay.items():
         s = sleeves[name]
-        if abs(c - s["cash"]) > 1e-6 or abs(b - s["btc"]) > 1e-10:
+        if abs(c - s["cash"]) > 1e-6 or abs(b - s["qty"]) > 1e-10:
             mismatches.append(f"{name}: ledger replay differs from state")
-        held = 1 if s["btc"] * fill_px > s["cash"] else 0
+        held = 1 if s["qty"] * fill_px > s["cash"] else 0
         if held != sleeve_rows[name]["target"] and not any(m.startswith(name) for m in notes):
             mismatches.append(f"{name}: position {held} != target {sleeve_rows[name]['target']}")
 
@@ -267,13 +274,38 @@ def run_step(
     return summary
 
 
+def normalize_summary(s: dict) -> dict:
+    """Add generic `qty`/`asset` to summaries written by older versions (which only had `btc`/`qty_btc`)."""
+    asset = s.get("asset", "BTC")
+    s = dict(s, asset=asset)
+    s["sleeves"] = {k: dict(r, asset=r.get("asset", asset), qty=r.get("qty", r.get("btc", 0.0)))
+                    for k, r in s.get("sleeves", {}).items()}
+    s["trades_today"] = [dict(t, asset=t.get("asset", asset), qty=t.get("qty", t.get("qty_btc")))
+                         for t in s.get("trades_today", [])]
+    return s
+
+
+def _fmt_trades(trades: list[dict]) -> str:
+    return "; ".join(f"{t['sleeve']} {t['side']} {t['qty']} {t.get('asset', '')} @ {t['price']} ({t['fill_type']})".replace("  ", " ")
+                     for t in trades)
+
+
 def format_summary(s: dict) -> str:
+    s = normalize_summary(s)
+    if s.get("already_processed"):
+        s["trades_recorded_earlier"] = [dict(t, qty=t.get("qty", t.get("qty_btc"))) for t in s.get("trades_recorded_earlier", [])]
+    rerun = s.get("already_processed")
     lines = [f"[{s['strategy_id']} paper] signal day {s['signal_day']} close={s['signal_close']:.2f}  "
-             f"exec {s['exec_day']} @ {s['exec_price']:.2f}" + ("  (already processed; no trades)" if s.get("already_processed") else "")]
+             f"exec {s['exec_day']} @ {s['exec_price']:.2f}"
+             + (f"  (ALREADY PROCESSED in earlier run at {s.get('recorded_run_ts')}; no new trades this run)" if rerun else "")]
     for name, r in s["sleeves"].items():
-        lines.append(f"  {name} SMA{r['sma_n']}={r['sma']}  signal={r['signal']}  {s.get('asset', 'BTC').lower()}={r['btc']:.8f}  cash={r['cash']:.2f}  equity={r['equity']:.2f}")
+        lines.append(f"  {name} SMA{r['sma_n']}={r['sma']}  signal={r['signal']}  qty={r['qty']:.8f} {r['asset']}  cash={r['cash']:.2f}  equity={r['equity']:.2f}")
     lines.append(f"  total equity={s['total_equity']:.2f}  peak={s['peak_equity']:.2f}  dd={s['drawdown']:.2%}  halted={s['halted']}")
-    lines.append(f"  trades today={len(s['trades_today'])}  " + "; ".join(f"{t['sleeve']} {t['side']} {t['qty_btc']} @ {t['price']} ({t['fill_type']})" for t in s["trades_today"]))
+    if rerun:
+        rec = s.get("trades_recorded_earlier", [])
+        lines.append(f"  trades this run=0; trades recorded earlier for this day={len(rec)} (already executed)  " + _fmt_trades(rec))
+    else:
+        lines.append(f"  trades today={len(s['trades_today'])}  " + _fmt_trades(s["trades_today"]))
     for n in s["notes"]:
         lines.append(f"  note: {n}")
     lines.append(f"  reconciliation mismatches={s['reconciliation']['mismatches']}  orders_sent={s['orders_sent']}")

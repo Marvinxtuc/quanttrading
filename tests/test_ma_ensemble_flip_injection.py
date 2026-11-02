@@ -56,7 +56,7 @@ def test_flip_long_cash_long_synthetic(tmp_path):
     hist = [base * (0.7 + 0.3 * i / 299) for i in range(300)]  # uptrend: all long
     s0 = run_step(bars_ending(hist + [base], "2026-01-01"), ledger, now=at("2026-01-01"))
     assert {t["side"] for t in s0["trades_today"]} == {"buy"} and len(s0["trades_today"]) == 3
-    btc_before = {k: v["btc"] for k, v in ledger.sleeves().items()}
+    btc_before = {k: v["qty"] for k, v in ledger.sleeves().items()}
 
     s_sell, s_buy, low, high = run_flip_cycle(ledger, base, "2026-01-01")
     assert {t["sleeve"] for t in s_sell["trades_today"]} == {"A", "B", "C"}
@@ -84,7 +84,7 @@ def test_flip_on_copy_of_paper_state(tmp_path):
     last_done = ledger.db.execute("SELECT MAX(signal_day) FROM runs").fetchone()[0]
     sl = ledger.sleeves()
     base = 80000.0
-    held = {k: v["btc"] for k, v in sl.items()}
+    held = {k: v["qty"] for k, v in sl.items()}
     s_sell, s_buy, low, high = run_flip_cycle(ledger, base, last_done)
     for name, row in s_sell["sleeves"].items():
         assert row["btc"] == 0 and row["signal"] == "CASH"
