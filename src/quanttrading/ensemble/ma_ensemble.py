@@ -26,6 +26,22 @@ MARKET_EXTRA_SLIPPAGE = 0.0005  # extra slippage assumption for the market fallb
 MIN_ORDER_BTC = 0.00005
 MAX_PORTFOLIO_DD = 0.60
 KRAKEN_OHLC_URL = "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440"
+MIN_ORDER_ETH = 0.002  # Kraken public AssetPairs XETHZUSD ordermin (checked 2026-11-02)
+
+# pair -> (asset label, OHLC url, min order qty, state file stem)
+PAIRS = {
+    "XBTUSD": ("BTC", KRAKEN_OHLC_URL, MIN_ORDER_BTC, "paper_sma_basket"),
+    "ETHUSD": ("ETH", "https://api.kraken.com/0/public/OHLC?pair=XETHZUSD&interval=1440", MIN_ORDER_ETH, "paper_eth_basket"),
+}
+PAIR_ALIASES = {"BTCUSD": "XBTUSD", "XXBTZUSD": "XBTUSD", "XETHZUSD": "ETHUSD"}
+
+
+def resolve_pair(pair: str) -> str:
+    p = pair.upper().replace("/", "")
+    p = PAIR_ALIASES.get(p, p)
+    if p not in PAIRS:
+        raise ValueError(f"unsupported pair {pair!r}; choose from {sorted(PAIRS)}")
+    return p
 
 
 @dataclass(frozen=True)
@@ -136,6 +152,8 @@ def run_step(
     *,
     now: datetime | None = None,
     log_path: Path | None = None,
+    min_order: float = MIN_ORDER_BTC,
+    asset: str = "BTC",
 ) -> dict:
     """One idempotent daily step keyed on the latest completed UTC daily bar."""
     now = now or datetime.now(timezone.utc)
@@ -162,8 +180,8 @@ def run_step(
 
     def trade(name: str, side: str, qty: float, reason: str) -> None:
         s = sleeves[name]
-        if qty < MIN_ORDER_BTC:
-            notes.append(f"{name}: {side} {qty:.8f} BTC below Kraken min {MIN_ORDER_BTC}; skipped")
+        if qty < min_order:
+            notes.append(f"{name}: {side} {qty:.8f} {asset} below Kraken min {min_order}; skipped")
             return
         limit_px = fill_px * (1 + SLIPPAGE) if side == "buy" else fill_px * (1 - SLIPPAGE)
         px, ftype = simulate_fill(side, limit_px, exec_bar)
@@ -232,7 +250,7 @@ def run_step(
             mismatches.append(f"{name}: position {held} != target {sleeve_rows[name]['target']}")
 
     summary = {
-        "strategy_id": STRATEGY_ID, "mode": "paper", "run_ts": ts, "signal_day": signal_bar.day,
+        "strategy_id": STRATEGY_ID, "mode": "paper", "asset": asset, "min_order": min_order, "run_ts": ts, "signal_day": signal_bar.day,
         "signal_close": signal_bar.close, "exec_day": today, "exec_price": fill_px,
         "sleeves": sleeve_rows, "total_equity": round(equity, 4), "peak_equity": round(peak, 4),
         "drawdown": round(1 - equity / peak, 4), "halted": halted,
@@ -253,7 +271,7 @@ def format_summary(s: dict) -> str:
     lines = [f"[{s['strategy_id']} paper] signal day {s['signal_day']} close={s['signal_close']:.2f}  "
              f"exec {s['exec_day']} @ {s['exec_price']:.2f}" + ("  (already processed; no trades)" if s.get("already_processed") else "")]
     for name, r in s["sleeves"].items():
-        lines.append(f"  {name} SMA{r['sma_n']}={r['sma']}  signal={r['signal']}  btc={r['btc']:.8f}  cash={r['cash']:.2f}  equity={r['equity']:.2f}")
+        lines.append(f"  {name} SMA{r['sma_n']}={r['sma']}  signal={r['signal']}  {s.get('asset', 'BTC').lower()}={r['btc']:.8f}  cash={r['cash']:.2f}  equity={r['equity']:.2f}")
     lines.append(f"  total equity={s['total_equity']:.2f}  peak={s['peak_equity']:.2f}  dd={s['drawdown']:.2%}  halted={s['halted']}")
     lines.append(f"  trades today={len(s['trades_today'])}  " + "; ".join(f"{t['sleeve']} {t['side']} {t['qty_btc']} @ {t['price']} ({t['fill_type']})" for t in s["trades_today"]))
     for n in s["notes"]:
@@ -262,7 +280,11 @@ def format_summary(s: dict) -> str:
     return "\n".join(lines)
 
 
-def run_once(state_dir: Path, fetch: Callable[[], list[DailyBar]] = fetch_kraken_daily, now: datetime | None = None) -> dict:
+def run_once(state_dir: Path, fetch: Callable[[], list[DailyBar]] | None = None, now: datetime | None = None,
+             pair: str = "XBTUSD") -> dict:
+    asset, url, min_order, stem = PAIRS[resolve_pair(pair)]
+    if fetch is None:
+        fetch = lambda: fetch_kraken_daily(url)  # noqa: E731
     state_dir.mkdir(parents=True, exist_ok=True)
-    ledger = Ledger(state_dir / "paper_sma_basket.sqlite")
-    return run_step(fetch(), ledger, now=now, log_path=state_dir / "paper_sma_basket.log")
+    ledger = Ledger(state_dir / f"{stem}.sqlite")
+    return run_step(fetch(), ledger, now=now, log_path=state_dir / f"{stem}.log", min_order=min_order, asset=asset)
