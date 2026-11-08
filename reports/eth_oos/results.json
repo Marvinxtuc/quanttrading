@@ -1,0 +1,1523 @@
+{
+ "data": {
+  "source": "Bitstamp ETHUSD daily (UTC); cross-checked vs Kraken XETHZUSD last 721 days: close median diff 0.013%, max 0.15%",
+  "n_days": 3371,
+  "start": "2017-08-16",
+  "end": "2026-11-07"
+ },
+ "folds": [
+  {
+   "fold_id": "wf_0",
+   "kind": "walk_forward",
+   "train_end_idx": 815,
+   "test_start_idx": 815,
+   "test_end_idx": 1164,
+   "test_start": "2019-11-09T00:00:00Z",
+   "test_end": "2020-10-22T00:00:00Z",
+   "n_test_bars": 349
+  },
+  {
+   "fold_id": "wf_1",
+   "kind": "walk_forward",
+   "train_end_idx": 1164,
+   "test_start_idx": 1164,
+   "test_end_idx": 1513,
+   "test_start": "2020-10-23T00:00:00Z",
+   "test_end": "2021-10-06T00:00:00Z",
+   "n_test_bars": 349
+  },
+  {
+   "fold_id": "wf_2",
+   "kind": "walk_forward",
+   "train_end_idx": 1513,
+   "test_start_idx": 1513,
+   "test_end_idx": 1862,
+   "test_start": "2021-10-07T00:00:00Z",
+   "test_end": "2022-09-20T00:00:00Z",
+   "n_test_bars": 349
+  },
+  {
+   "fold_id": "wf_3",
+   "kind": "walk_forward",
+   "train_end_idx": 1862,
+   "test_start_idx": 1862,
+   "test_end_idx": 2329,
+   "test_start": "2022-09-21T00:00:00Z",
+   "test_end": "2023-12-31T00:00:00Z",
+   "n_test_bars": 467
+  },
+  {
+   "fold_id": "holdout",
+   "kind": "holdout",
+   "train_end_idx": 2329,
+   "test_start_idx": 2329,
+   "test_end_idx": 3371,
+   "test_start": "2024-01-01T00:00:00Z",
+   "test_end": "2026-11-07T00:00:00Z",
+   "n_test_bars": 1042
+  }
+ ],
+ "results": {
+  "30bps": {
+   "basket": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 23,
+      "ret": -0.4206,
+      "bh_ret": 1.2514,
+      "maxdd": 0.6187,
+      "bh_maxdd": 0.6174,
+      "pf": 2.43,
+      "n_closed": 13
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 19,
+      "ret": 2.9789,
+      "bh_ret": 7.6063,
+      "maxdd": 0.6044,
+      "bh_maxdd": 0.5725,
+      "pf": 37.373,
+      "n_closed": 11
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 18,
+      "ret": -0.1262,
+      "bh_ret": -0.6312,
+      "maxdd": 0.3483,
+      "bh_maxdd": 0.7929,
+      "pf": 0.02,
+      "n_closed": 9
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 19,
+      "ret": 0.3911,
+      "bh_ret": 0.7184,
+      "maxdd": 0.2086,
+      "bh_maxdd": 0.3316,
+      "pf": 5.485,
+      "n_closed": 11
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 59,
+      "ret": 0.3026,
+      "bh_ret": -0.0233,
+      "maxdd": 0.3868,
+      "bh_maxdd": 0.6759,
+      "pf": 2.238,
+      "n_closed": 31
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma200": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.1435,
+      "bh_ret": 1.2514,
+      "maxdd": 0.672,
+      "bh_maxdd": 0.6174,
+      "pf": 2.247,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 5,
+      "ret": 6.0673,
+      "bh_ret": 7.6063,
+      "maxdd": 0.5806,
+      "bh_maxdd": 0.5725,
+      "pf": 142.785,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 4,
+      "ret": -0.1445,
+      "bh_ret": -0.6312,
+      "maxdd": 0.362,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 2
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.478,
+      "bh_ret": 0.7184,
+      "maxdd": 0.2214,
+      "bh_maxdd": 0.3316,
+      "pf": 46.913,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 21,
+      "ret": 0.3601,
+      "bh_ret": -0.0233,
+      "maxdd": 0.3998,
+      "bh_maxdd": 0.6759,
+      "pf": 2.614,
+      "n_closed": 11
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma150": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.3676,
+      "bh_ret": 1.2514,
+      "maxdd": 0.652,
+      "bh_maxdd": 0.6174,
+      "pf": 2.917,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 13,
+      "ret": 3.519,
+      "bh_ret": 7.6063,
+      "maxdd": 0.6632,
+      "bh_maxdd": 0.5725,
+      "pf": 11.19,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 6,
+      "ret": -0.0352,
+      "bh_ret": -0.6312,
+      "maxdd": 0.2804,
+      "bh_maxdd": 0.7929,
+      "pf": 0.187,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 9,
+      "ret": 0.363,
+      "bh_ret": 0.7184,
+      "maxdd": 0.1925,
+      "bh_maxdd": 0.3316,
+      "pf": 3.309,
+      "n_closed": 5
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.4359,
+      "bh_ret": -0.0233,
+      "maxdd": 0.4526,
+      "bh_maxdd": 0.6759,
+      "pf": 2.481,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma250": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 5,
+      "ret": 0.0819,
+      "bh_ret": 1.2514,
+      "maxdd": 0.6564,
+      "bh_maxdd": 0.6174,
+      "pf": 2.203,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.6063,
+      "bh_ret": 7.6063,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 1
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 8,
+      "ret": -0.1988,
+      "bh_ret": -0.6312,
+      "maxdd": 0.4025,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 4
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.3323,
+      "bh_ret": 0.7184,
+      "maxdd": 0.2214,
+      "bh_maxdd": 0.3316,
+      "pf": 5.092,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.1118,
+      "bh_ret": -0.0233,
+      "maxdd": 0.4036,
+      "bh_maxdd": 0.6759,
+      "pf": 1.582,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "dca": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 50,
+      "ret": 1.0112,
+      "bh_ret": 1.2514,
+      "maxdd": 0.3098,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 50,
+      "ret": 1.7354,
+      "bh_ret": 7.6063,
+      "maxdd": 0.5069,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 50,
+      "ret": -0.4177,
+      "bh_ret": -0.6312,
+      "maxdd": 0.4887,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 66,
+      "ret": 0.3904,
+      "bh_ret": 0.7184,
+      "maxdd": 0.1938,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 149,
+      "ret": -0.1488,
+      "bh_ret": -0.0233,
+      "maxdd": 0.5604,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": {
+     "a": false,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "voltarget": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 14,
+      "ret": 0.8112,
+      "bh_ret": 1.2514,
+      "maxdd": 0.3097,
+      "bh_maxdd": 0.6174,
+      "pf": 2.649,
+      "n_closed": 14
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 16,
+      "ret": 2.3859,
+      "bh_ret": 7.6063,
+      "maxdd": 0.2327,
+      "bh_maxdd": 0.5725,
+      "pf": 6.134,
+      "n_closed": 16
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 7,
+      "ret": -0.4391,
+      "bh_ret": -0.6312,
+      "maxdd": 0.5588,
+      "bh_maxdd": 0.7929,
+      "pf": 0.237,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 18,
+      "ret": 0.5949,
+      "bh_ret": 0.7184,
+      "maxdd": 0.2541,
+      "bh_maxdd": 0.3316,
+      "pf": 2.346,
+      "n_closed": 18
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 42,
+      "ret": 0.2853,
+      "bh_ret": -0.0233,
+      "maxdd": 0.5699,
+      "bh_maxdd": 0.6759,
+      "pf": 1.365,
+      "n_closed": 42
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "bh": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 1,
+      "ret": 1.2514,
+      "bh_ret": 1.2514,
+      "maxdd": 0.6174,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.6063,
+      "bh_ret": 7.6063,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 1,
+      "ret": -0.6312,
+      "bh_ret": -0.6312,
+      "maxdd": 0.7929,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 1,
+      "ret": 0.7184,
+      "bh_ret": 0.7184,
+      "maxdd": 0.3316,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 1,
+      "ret": -0.0233,
+      "bh_ret": -0.0233,
+      "maxdd": 0.6759,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": null
+   }
+  },
+  "40bps": {
+   "basket": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 23,
+      "ret": -0.4221,
+      "bh_ret": 1.2491,
+      "maxdd": 0.6191,
+      "bh_maxdd": 0.6174,
+      "pf": 2.396,
+      "n_closed": 13
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 19,
+      "ret": 2.9566,
+      "bh_ret": 7.5976,
+      "maxdd": 0.6062,
+      "bh_maxdd": 0.5725,
+      "pf": 36.493,
+      "n_closed": 11
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 18,
+      "ret": -0.1314,
+      "bh_ret": -0.6316,
+      "maxdd": 0.3515,
+      "bh_maxdd": 0.7929,
+      "pf": 0.014,
+      "n_closed": 9
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 19,
+      "ret": 0.3823,
+      "bh_ret": 0.7167,
+      "maxdd": 0.2089,
+      "bh_maxdd": 0.3316,
+      "pf": 5.263,
+      "n_closed": 11
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 59,
+      "ret": 0.2771,
+      "bh_ret": -0.0243,
+      "maxdd": 0.394,
+      "bh_maxdd": 0.6759,
+      "pf": 2.102,
+      "n_closed": 31
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma200": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.1332,
+      "bh_ret": 1.2491,
+      "maxdd": 0.6743,
+      "bh_maxdd": 0.6174,
+      "pf": 2.212,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 5,
+      "ret": 6.0319,
+      "bh_ret": 7.5976,
+      "maxdd": 0.5818,
+      "bh_maxdd": 0.5725,
+      "pf": 133.113,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 4,
+      "ret": -0.148,
+      "bh_ret": -0.6316,
+      "maxdd": 0.3639,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 2
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.4706,
+      "bh_ret": 0.7167,
+      "maxdd": 0.2214,
+      "bh_maxdd": 0.3316,
+      "pf": 38.282,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 21,
+      "ret": 0.3317,
+      "bh_ret": -0.0243,
+      "maxdd": 0.4046,
+      "bh_maxdd": 0.6759,
+      "pf": 2.427,
+      "n_closed": 11
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma150": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.3553,
+      "bh_ret": 1.2491,
+      "maxdd": 0.6541,
+      "bh_maxdd": 0.6174,
+      "pf": 2.864,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 13,
+      "ret": 3.4604,
+      "bh_ret": 7.5976,
+      "maxdd": 0.6662,
+      "bh_maxdd": 0.5725,
+      "pf": 10.957,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 6,
+      "ret": -0.041,
+      "bh_ret": -0.6316,
+      "maxdd": 0.284,
+      "bh_maxdd": 0.7929,
+      "pf": 0.129,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 9,
+      "ret": 0.3507,
+      "bh_ret": 0.7167,
+      "maxdd": 0.1933,
+      "bh_maxdd": 0.3316,
+      "pf": 3.194,
+      "n_closed": 5
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.4088,
+      "bh_ret": -0.0243,
+      "maxdd": 0.4614,
+      "bh_maxdd": 0.6759,
+      "pf": 2.363,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma250": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 5,
+      "ret": 0.0765,
+      "bh_ret": 1.2491,
+      "maxdd": 0.6575,
+      "bh_maxdd": 0.6174,
+      "pf": 2.184,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.5976,
+      "bh_ret": 7.5976,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 1
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 8,
+      "ret": -0.2052,
+      "bh_ret": -0.6316,
+      "maxdd": 0.4066,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 4
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.3256,
+      "bh_ret": 0.7167,
+      "maxdd": 0.2214,
+      "bh_maxdd": 0.3316,
+      "pf": 4.918,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.0908,
+      "bh_ret": -0.0243,
+      "maxdd": 0.4072,
+      "bh_maxdd": 0.6759,
+      "pf": 1.476,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "dca": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 50,
+      "ret": 1.0092,
+      "bh_ret": 1.2491,
+      "maxdd": 0.3098,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 50,
+      "ret": 1.7326,
+      "bh_ret": 7.5976,
+      "maxdd": 0.5069,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 50,
+      "ret": -0.4183,
+      "bh_ret": -0.6316,
+      "maxdd": 0.4887,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 66,
+      "ret": 0.389,
+      "bh_ret": 0.7167,
+      "maxdd": 0.194,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 149,
+      "ret": -0.1497,
+      "bh_ret": -0.0243,
+      "maxdd": 0.5604,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": {
+     "a": false,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "voltarget": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 14,
+      "ret": 0.8067,
+      "bh_ret": 1.2491,
+      "maxdd": 0.3098,
+      "bh_maxdd": 0.6174,
+      "pf": 2.65,
+      "n_closed": 14
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 16,
+      "ret": 2.3766,
+      "bh_ret": 7.5976,
+      "maxdd": 0.233,
+      "bh_maxdd": 0.5725,
+      "pf": 6.135,
+      "n_closed": 16
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 7,
+      "ret": -0.4398,
+      "bh_ret": -0.6316,
+      "maxdd": 0.5591,
+      "bh_maxdd": 0.7929,
+      "pf": 0.237,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 18,
+      "ret": 0.5887,
+      "bh_ret": 0.7167,
+      "maxdd": 0.2548,
+      "bh_maxdd": 0.3316,
+      "pf": 2.345,
+      "n_closed": 18
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 42,
+      "ret": 0.2736,
+      "bh_ret": -0.0243,
+      "maxdd": 0.571,
+      "bh_maxdd": 0.6759,
+      "pf": 1.365,
+      "n_closed": 42
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "bh": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 1,
+      "ret": 1.2491,
+      "bh_ret": 1.2491,
+      "maxdd": 0.6174,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.5976,
+      "bh_ret": 7.5976,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 1,
+      "ret": -0.6316,
+      "bh_ret": -0.6316,
+      "maxdd": 0.7929,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 1,
+      "ret": 0.7167,
+      "bh_ret": 0.7167,
+      "maxdd": 0.3316,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 1,
+      "ret": -0.0243,
+      "bh_ret": -0.0243,
+      "maxdd": 0.6759,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": null
+   }
+  },
+  "60bps": {
+   "basket": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 23,
+      "ret": -0.4253,
+      "bh_ret": 1.2446,
+      "maxdd": 0.6198,
+      "bh_maxdd": 0.6174,
+      "pf": 2.331,
+      "n_closed": 13
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 19,
+      "ret": 2.9597,
+      "bh_ret": 7.5803,
+      "maxdd": 0.6051,
+      "bh_maxdd": 0.5725,
+      "pf": 34.841,
+      "n_closed": 11
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 18,
+      "ret": -0.1417,
+      "bh_ret": -0.6323,
+      "maxdd": 0.358,
+      "bh_maxdd": 0.7929,
+      "pf": 0.005,
+      "n_closed": 9
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 19,
+      "ret": 0.3649,
+      "bh_ret": 0.7132,
+      "maxdd": 0.2097,
+      "bh_maxdd": 0.3316,
+      "pf": 4.855,
+      "n_closed": 11
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 59,
+      "ret": 0.2275,
+      "bh_ret": -0.0262,
+      "maxdd": 0.4084,
+      "bh_maxdd": 0.6759,
+      "pf": 1.869,
+      "n_closed": 31
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma200": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.1129,
+      "bh_ret": 1.2446,
+      "maxdd": 0.6788,
+      "bh_maxdd": 0.6174,
+      "pf": 2.143,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 5,
+      "ret": 5.9616,
+      "bh_ret": 7.5803,
+      "maxdd": 0.5844,
+      "bh_maxdd": 0.5725,
+      "pf": 117.126,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 4,
+      "ret": -0.1548,
+      "bh_ret": -0.6323,
+      "maxdd": 0.3678,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 2
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.4559,
+      "bh_ret": 0.7132,
+      "maxdd": 0.2272,
+      "bh_maxdd": 0.3316,
+      "pf": 27.739,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 21,
+      "ret": 0.2767,
+      "bh_ret": -0.0262,
+      "maxdd": 0.4141,
+      "bh_maxdd": 0.6759,
+      "pf": 2.113,
+      "n_closed": 11
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma150": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 9,
+      "ret": 0.331,
+      "bh_ret": 1.2446,
+      "maxdd": 0.6583,
+      "bh_maxdd": 0.6174,
+      "pf": 2.763,
+      "n_closed": 5
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 13,
+      "ret": 3.3453,
+      "bh_ret": 7.5803,
+      "maxdd": 0.6722,
+      "bh_maxdd": 0.5725,
+      "pf": 10.513,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 6,
+      "ret": -0.0525,
+      "bh_ret": -0.6323,
+      "maxdd": 0.2912,
+      "bh_maxdd": 0.7929,
+      "pf": 0.037,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 9,
+      "ret": 0.3265,
+      "bh_ret": 0.7132,
+      "maxdd": 0.1949,
+      "bh_maxdd": 0.3316,
+      "pf": 2.979,
+      "n_closed": 5
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.356,
+      "bh_ret": -0.0262,
+      "maxdd": 0.4784,
+      "bh_maxdd": 0.6759,
+      "pf": 2.153,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "sma250": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 5,
+      "ret": 0.0657,
+      "bh_ret": 1.2446,
+      "maxdd": 0.6595,
+      "bh_maxdd": 0.6174,
+      "pf": 2.147,
+      "n_closed": 3
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.5803,
+      "bh_ret": 7.5803,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 1
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 8,
+      "ret": -0.2179,
+      "bh_ret": -0.6323,
+      "maxdd": 0.4149,
+      "bh_maxdd": 0.7929,
+      "pf": 0.0,
+      "n_closed": 4
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 5,
+      "ret": 0.3123,
+      "bh_ret": 0.7132,
+      "maxdd": 0.2214,
+      "bh_maxdd": 0.3316,
+      "pf": 4.594,
+      "n_closed": 3
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 19,
+      "ret": 0.0499,
+      "bh_ret": -0.0262,
+      "maxdd": 0.416,
+      "bh_maxdd": 0.6759,
+      "pf": 1.296,
+      "n_closed": 10
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "dca": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 50,
+      "ret": 1.0052,
+      "bh_ret": 1.2446,
+      "maxdd": 0.3099,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 50,
+      "ret": 1.7271,
+      "bh_ret": 7.5803,
+      "maxdd": 0.5069,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 50,
+      "ret": -0.4195,
+      "bh_ret": -0.6323,
+      "maxdd": 0.4886,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 66,
+      "ret": 0.3862,
+      "bh_ret": 0.7132,
+      "maxdd": 0.1945,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 149,
+      "ret": -0.1514,
+      "bh_ret": -0.0262,
+      "maxdd": 0.5605,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": {
+     "a": false,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "voltarget": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 14,
+      "ret": 0.7978,
+      "bh_ret": 1.2446,
+      "maxdd": 0.3101,
+      "bh_maxdd": 0.6174,
+      "pf": 2.65,
+      "n_closed": 14
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 16,
+      "ret": 2.358,
+      "bh_ret": 7.5803,
+      "maxdd": 0.2335,
+      "bh_maxdd": 0.5725,
+      "pf": 6.135,
+      "n_closed": 16
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 7,
+      "ret": -0.4413,
+      "bh_ret": -0.6323,
+      "maxdd": 0.5598,
+      "bh_maxdd": 0.7929,
+      "pf": 0.237,
+      "n_closed": 7
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 18,
+      "ret": 0.5764,
+      "bh_ret": 0.7132,
+      "maxdd": 0.256,
+      "bh_maxdd": 0.3316,
+      "pf": 2.345,
+      "n_closed": 18
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 42,
+      "ret": 0.2504,
+      "bh_ret": -0.0262,
+      "maxdd": 0.5733,
+      "bh_maxdd": 0.6759,
+      "pf": 1.365,
+      "n_closed": 42
+     }
+    ],
+    "criteria": {
+     "a": true,
+     "b": false,
+     "c": false,
+     "PASS": false
+    }
+   },
+   "bh": {
+    "folds": [
+     {
+      "fold": "wf_0",
+      "start": "2019-11-09",
+      "end": "2020-10-22",
+      "trades": 1,
+      "ret": 1.2446,
+      "bh_ret": 1.2446,
+      "maxdd": 0.6174,
+      "bh_maxdd": 0.6174,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_1",
+      "start": "2020-10-23",
+      "end": "2021-10-06",
+      "trades": 1,
+      "ret": 7.5803,
+      "bh_ret": 7.5803,
+      "maxdd": 0.5725,
+      "bh_maxdd": 0.5725,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_2",
+      "start": "2021-10-07",
+      "end": "2022-09-20",
+      "trades": 1,
+      "ret": -0.6323,
+      "bh_ret": -0.6323,
+      "maxdd": 0.7929,
+      "bh_maxdd": 0.7929,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "wf_3",
+      "start": "2022-09-21",
+      "end": "2023-12-31",
+      "trades": 1,
+      "ret": 0.7132,
+      "bh_ret": 0.7132,
+      "maxdd": 0.3316,
+      "bh_maxdd": 0.3316,
+      "pf": null,
+      "n_closed": 0
+     },
+     {
+      "fold": "holdout",
+      "start": "2024-01-01",
+      "end": "2026-11-07",
+      "trades": 1,
+      "ret": -0.0262,
+      "bh_ret": -0.0262,
+      "maxdd": 0.6759,
+      "bh_maxdd": 0.6759,
+      "pf": null,
+      "n_closed": 0
+     }
+    ],
+    "criteria": null
+   }
+  }
+ }
+}
