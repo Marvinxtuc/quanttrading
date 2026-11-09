@@ -40,3 +40,10 @@
 Same SMA150/200/250 basket, 200 USD split into thirds, 40 bps fee + 5 bps slippage, same kill switch and cost guard.
 Pair: Kraken XETHZUSD (ETHUSD) public daily OHLC. Min order: 0.002 ETH (Kraken AssetPairs `ordermin`, checked 2026-11-02).
 State: `state/paper_eth_basket.sqlite` / `.log`. Daily: `quanttrading paper-basket --pair ETHUSD --once`.
+
+## 补充裁定（2026-11-09）
+
+- 组合回撤 60% 硬止损：保留。触发后全部转为现金并暂停策略；何时恢复由人工复核决定（Marvin 确认），不自动重新入场，也不永久停在现金。
+- 不采用「清仓后重新站上均线再买回」方案（BTC 唯一一次触发 2018-02-05 中表现最差；样本仅 1 次，止损定位为保险而非收益来源）。
+- 依据：reports/btc_stop_variants.md（a556eb7），reports/eth_oos.md（4e4ff82）。
+- 注意：BTC 保留期（2024 起）最大回撤 33.7%，贴近 35% 上限，实盘前需复核。
